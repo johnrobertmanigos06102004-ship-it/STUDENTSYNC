@@ -375,12 +375,7 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Program / Section Assignment</label>
-                                <select x-model="form.program_section" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-orange-500">
-                                    <option value="">-- Choose Section --</option>
-                                    <template x-for="sect in getUniqueSections()" :key="sect">
-                                        <option :value="sect" x-text="sect"></option>
-                                    </template>
-                                </select>
+                                <input type="text" x-model="form.program_section" placeholder="e.g., BSIT-4A-G1" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 bg-white">
                             </div>
                         </div>
 
@@ -446,7 +441,6 @@
                 students: [],
                 searchQuery: '',
                 newSectionInput: '',
-                // Fallback custom sections list to allow users to populate empty tracking classes
                 customSections: JSON.parse(localStorage.getItem('custom_sections')) || ['BSIT-4A-G1', 'BSIT-4B-G2'],
                 form: { student_id: '', name: '', email: '', program_section: '', document_name: '', document_number: '', schedule_info: '', status: 'Lockings' },
                 editingStudentId: null,
@@ -622,7 +616,7 @@
 
                     if (error) {
                         this.isLoading = false;
-                        alert("🚨 SUPABASE ERROR: Could not commit student profile.\n\nReason: " + error.message + "\n\nTip: Double-check if your database columns exactly match these structural fields or if they are still named 'gpa' / 'attendance'.");
+                        alert("🚨 SUPABASE ERROR: Could not commit student profile.\n\nReason: " + error.message + "\n\nTip: If you haven't added columns like 'program_section', 'document_name', 'document_number', or 'schedule_info' to your Supabase table schema yet, the save operation will fail.");
                     } else {
                         await this.fetchCloudRecords();
                         this.editingStudentId = null;
@@ -660,7 +654,6 @@
                 },
 
                 getUniqueSections() {
-                    // Merges active database rows with locally managed section configuration tags
                     const activeDbSections = this.students.map(s => s.program_section).filter(Boolean);
                     const combined = [...this.customSections, ...activeDbSections];
                     return [...new Set(combined)];
