@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudentSync - Consolidated Cloud Information Management System</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Alpine.js CDN -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Supabase JS Client CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         [x-cloak] { display: none !important; }
@@ -30,11 +33,13 @@
 </head>
 <body class="bg-slate-900 font-sans text-gray-800 antialiased min-h-screen" x-data="trackerApp()">
 
+    <!-- LOADING SCREEN INTERFACES -->
     <div x-show="isLoading" class="fixed inset-0 bg-slate-950/80 z-50 flex flex-col items-center justify-center text-white" x-cloak>
         <div class="w-12 h-12 border-4 border-t-orange-500 border-slate-700 rounded-full animate-spin mb-4"></div>
         <p class="text-xs font-mono tracking-widest uppercase text-slate-400">Processing Database Request...</p>
     </div>
 
+    <!-- AUTHENTICATION SCREEN -->
     <div x-show="!isLoggedIn" class="min-h-screen flex items-center justify-center px-4 py-12" x-cloak>
         <div class="max-w-md w-full space-y-6 bg-white p-8 rounded-2xl shadow-2xl relative z-10 border border-gray-100">
             <div class="text-center">
@@ -99,10 +104,13 @@
         </div>
     </div>
 
+    <!-- PORTAL WORKING HOUSING -->
     <div x-show="isLoggedIn" class="flex min-h-screen relative bg-slate-50" style="display: none;" x-cloak>
+        <!-- Mobile Sidebar Overlay -->
         <div x-show="isSidebarOpen" @click="isSidebarOpen = false" class="fixed inset-0 bg-slate-950/50 z-40 transition-opacity" x-cloak></div>
 
-        <aside class="fixed inset-y-0 left-0 w-76 bg-slate-900 text-white p-5 z-50 transform transition-transform duration-300 flex flex-col justify-between shadow-2xl overflow-y-auto" :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:static lg:h-screen'">
+        <!-- SIDEBAR CONTAINER -->
+        <aside class="fixed inset-y-0 left-0 w-80 bg-slate-900 text-white p-5 z-50 transform transition-transform duration-300 flex flex-col justify-between shadow-2xl overflow-y-auto" :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:static lg:h-screen'">
             <div class="space-y-6">
                 <div class="flex flex-col border-b border-slate-800 pb-4 gap-3">
                     <div class="flex items-center justify-between w-full">
@@ -115,10 +123,11 @@
                     <span class="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 bg-slate-800 rounded-sm text-slate-400 block w-max" x-text="activeSessionRole + ' instance'"></span>
                 </div>
                 
+                <!-- Navigation -->
                 <nav class="space-y-2">
                     <template x-if="activeSessionRole === 'admin'">
                         <div class="space-y-2">
-                            <button @click="currentView = 'dashboard'; isSidebarOpen = false; editingStudentId = null" :class="currentView === 'dashboard' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition text-left cursor-pointer"><span>📋</span> Control Hub Dashboard</button>
+                            <button @click="currentView = 'dashboard'; isSidebarOpen = false;" :class="currentView === 'dashboard' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition text-left cursor-pointer"><span>📋</span> Control Hub Dashboard</button>
                             <button @click="currentView = 'programs'; isSidebarOpen = false" :class="currentView === 'programs' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition text-left cursor-pointer"><span>🌿</span> Program / Section Roster</button>
                         </div>
                     </template>
@@ -129,19 +138,81 @@
                     </template>
                 </nav>
 
+                <!-- RESTORED & ALIGNED ENTRY FORM MOVED TO THE SIDEBAR -->
+                <template x-if="activeSessionRole === 'admin'">
+                    <div class="border-t border-slate-800 pt-4 space-y-4">
+                        <div class="flex justify-between items-center">
+                            <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400" x-text="editingStudentId ? '⚡ Edit Student Config' : '📝 Append Student Entry'"></div>
+                            <button type="button" x-show="editingStudentId" @click="resetForm()" class="text-[10px] bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded text-gray-300 font-semibold">Cancel</button>
+                        </div>
+
+                        <form @submit.prevent="commitStudentForm()" class="space-y-3 text-slate-300">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-1">Assign Student ID Number</label>
+                                <input type="text" x-model="form.student_id" :disabled="editingStudentId" placeholder="e.g., STU-2026-001" required class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs font-semibold text-white focus:outline-hidden focus:ring-2 focus:ring-orange-500 disabled:opacity-50">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-1">Full Student Name</label>
+                                <input type="text" x-model="form.name" placeholder="e.g., Johnro E." required class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs font-semibold text-white focus:outline-hidden focus:ring-2 focus:ring-orange-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-1">Contact Email</label>
+                                <input type="email" x-model="form.email" placeholder="student@example.com" required class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs font-semibold text-white focus:outline-hidden focus:ring-2 focus:ring-orange-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-1">Program / Section Assignment</label>
+                                <select x-model="form.program_section" required class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs font-semibold text-white focus:outline-hidden focus:ring-2 focus:ring-orange-500">
+                                    <option value="" class="text-slate-400">e.g., BSIT-4A-G1</option>
+                                    <template x-for="section in getUniqueSections()" :key="section">
+                                        <option :value="section" x-text="section" class="text-white bg-slate-800"></option>
+                                    </template>
+                                </select>
+                            </div>
+
+                            <!-- Architecture Nested Container inside Sidebar -->
+                            <div class="border border-slate-800 bg-slate-950/40 rounded-xl p-3 space-y-2.5">
+                                <div class="text-[9px] font-extrabold text-orange-400 uppercase tracking-wider">Custom Document Architecture Setup</div>
+                                <div>
+                                    <label class="block text-[9px] font-bold text-slate-400 uppercase tracking-tight mb-0.5">Custom Requirement Name</label>
+                                    <input type="text" x-model="form.document_name" placeholder="e.g., Embedded Systems Portfolio" class="w-full px-2 py-1 border border-slate-700 bg-slate-800 rounded-md text-xs font-semibold text-white focus:outline-hidden focus:ring-2 focus:ring-orange-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[9px] font-bold text-slate-400 uppercase tracking-tight mb-0.5">Document Control Number / Code</label>
+                                    <input type="text" x-model="form.document_code" placeholder="e.g., DOC-CTRL-992" class="w-full px-2 py-1 border border-slate-700 bg-slate-800 rounded-md text-xs font-semibold text-white focus:outline-hidden focus:ring-2 focus:ring-orange-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[9px] font-bold text-slate-400 uppercase tracking-tight mb-0.5">Custom Timeline Schedule Info</label>
+                                    <input type="text" x-model="form.schedule_info" placeholder="e.g., Mon/Wed 09:00 AM" class="w-full px-2 py-1 border border-slate-700 bg-slate-800 rounded-md text-xs font-semibold text-white focus:outline-hidden focus:ring-2 focus:ring-orange-500">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-1">File Inspection Compliance Status</label>
+                                <select x-model="form.status" class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs font-semibold text-white focus:outline-hidden focus:ring-2 focus:ring-orange-500">
+                                    <option value="Complete" class="text-white bg-slate-800">Complete (Clear Status)</option>
+                                    <option value="Lockings" class="text-white bg-slate-800">Lockings (Has Outstanding)</option>
+                                </select>
+                            </div>
+                            
+                            <button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 rounded-lg text-xs tracking-wide shadow transition cursor-pointer">Commit Structural Update to Cloud</button>
+                        </form>
+                    </div>
+                </template>
+
+                <!-- SECTION BUILDER TAGS ACCORDION LAYER IN SIDEBAR -->
                 <template x-if="activeSessionRole === 'admin'">
                     <div class="border-t border-slate-800 pt-4 space-y-3">
-                        <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400">Section Editor</div>
-                        <div class="flex flex-col gap-2">
-                            <input type="text" x-model="newSectionInput" placeholder="Add e.g., BSIT-4B-G2" class="w-full px-3 py-2 border border-slate-700 bg-slate-800 rounded-lg text-xs font-semibold text-white placeholder-slate-500 focus:outline-hidden focus:ring-2 focus:ring-orange-500">
-                            <button type="button" @click="addNewSectionSlot()" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs py-2 rounded-lg transition cursor-pointer">➕ Create Section Option</button>
+                        <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400">Section Options Management</div>
+                        <div class="flex flex-col gap-1.5">
+                            <input type="text" x-model="newSectionInput" placeholder="Add section identifier..." class="w-full px-2.5 py-1.5 border border-slate-700 bg-slate-800 rounded-lg text-xs font-semibold text-white placeholder-slate-500 focus:outline-hidden focus:ring-2 focus:ring-orange-500">
+                            <button type="button" @click="addNewSectionSlot()" class="w-full bg-slate-800 hover:bg-slate-700 text-orange-400 font-bold text-xs py-1.5 rounded-lg transition border border-slate-700 cursor-pointer">➕ Create Option</button>
                         </div>
                         
-                        <div class="space-y-1.5 pt-1 max-h-40 overflow-y-auto pr-1">
+                        <div class="space-y-1 pt-1 max-h-32 overflow-y-auto pr-1">
                             <template x-for="sect in customSections" :key="sect">
-                                <div class="bg-slate-800 px-2.5 py-1.5 rounded-md text-xs flex justify-between items-center text-slate-300">
+                                <div class="bg-slate-800/60 px-2 py-1 rounded text-[11px] flex justify-between items-center text-slate-300 border border-slate-800">
                                     <span x-text="sect"></span>
-                                    <button @click="removeSectionSlot(sect)" class="text-[10px] text-red-400 hover:text-red-600 font-bold bg-slate-900/50 px-1 rounded transition cursor-pointer">✕</button>
+                                    <button @click="removeSectionSlot(sect)" class="text-red-400 hover:text-red-600 font-bold bg-slate-900/40 px-1 rounded transition cursor-pointer">✕</button>
                                 </div>
                             </template>
                         </div>
@@ -154,6 +225,7 @@
             </div>
         </aside>
 
+        <!-- MAIN CONTENT WORKSPACE -->
         <div class="flex-1 flex flex-col min-w-0">
             <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-4 justify-between shrink-0 shadow-xs">
                 <div class="flex items-center gap-4">
@@ -167,93 +239,34 @@
             </header>
 
             <main class="flex-1 p-6 bg-slate-50/50 overflow-y-auto">
+                <!-- VIEW 1: HUB DASHBOARD -->
                 <div x-show="currentView === 'dashboard'" class="space-y-6" x-cloak>
+                    <!-- ADMIN OPERATIONS VIEW -->
                     <template x-if="activeSessionRole === 'admin'">
                         <div class="space-y-6">
                             
-                            <div class="max-w-3xl mx-auto bg-white rounded-2xl border border-gray-200 shadow-md p-6 space-y-4">
-                                <div class="flex justify-between items-center border-b border-gray-100 pb-2">
-                                    <h3 class="text-md font-bold text-slate-900" x-text="editingStudentId ? 'Append New Cloud Student Entry & Config (Editing)' : 'Append New Cloud Student Entry & Config'"></h3>
-                                    <button type="button" x-show="editingStudentId" @click="resetForm()" class="bg-gray-100 text-gray-600 px-2.5 py-1 rounded text-xs font-bold hover:bg-gray-200">Cancel</button>
-                                </div>
-                                
-                                <form @submit.prevent="commitStudentForm()" class="space-y-4">
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label class="block text-[10px] font-extrabold text-slate-700 uppercase tracking-tight mb-1">Assign Student ID Number</label>
-                                            <input type="text" x-model="form.student_id" :disabled="editingStudentId" placeholder="e.g., STU-2026-001" required class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 disabled:bg-gray-50">
-                                        </div>
-                                        <div>
-                                            <label class="block text-[10px] font-extrabold text-slate-700 uppercase tracking-tight mb-1">Full Student Name</label>
-                                            <input type="text" x-model="form.name" placeholder="e.g., Johnro E." required class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500">
-                                        </div>
-                                    </div>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label class="block text-[10px] font-extrabold text-slate-700 uppercase tracking-tight mb-1">Contact Email</label>
-                                            <input type="email" x-model="form.email" placeholder="student@example.com" required class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500">
-                                        </div>
-                                        <div>
-                                            <label class="block text-[10px] font-extrabold text-slate-700 uppercase tracking-tight mb-1">Program / Section Assignment</label>
-                                            <select x-model="form.program_section" required class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500">
-                                                <option value="">e.g., BSIT-4A-G1</option>
-                                                <template x-for="section in getUniqueSections()" :key="section">
-                                                    <option :value="section" x-text="section"></option>
-                                                </template>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div class="border border-slate-100 bg-slate-50/50 rounded-xl p-4 space-y-3">
-                                        <div class="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider">Custom Document Architecture & Schedule Timelines Setup</div>
-                                        
-                                        <div>
-                                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-tight mb-1">Custom Requirement Name</label>
-                                            <input type="text" x-model="form.document_name" placeholder="e.g., Embedded Systems Design Portfolio" class="w-full px-3 py-2 border border-gray-200 bg-white rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500">
-                                        </div>
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div>
-                                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-tight mb-1">Document Control Number / Code</label>
-                                                <input type="text" x-model="form.document_code" placeholder="e.g., DOC-CTRL-992" class="w-full px-3 py-2 border border-gray-200 bg-white rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500">
-                                            </div>
-                                            <div>
-                                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-tight mb-1">Custom Timeline Schedule Info</label>
-                                                <input type="text" x-model="form.schedule_info" placeholder="e.g., Mon/Wed 09:00 AM" class="w-full px-3 py-2 border border-gray-200 bg-white rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label class="block text-[10px] font-extrabold text-slate-700 uppercase tracking-tight mb-1">File Inspection Compliance Status</label>
-                                        <select x-model="form.status" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500">
-                                            <option value="Complete">Complete (Clear Status)</option>
-                                            <option value="Lockings">Lockings (Has Outstanding Requirements)</option>
-                                        </select>
-                                    </div>
-                                    <div class="pt-2">
-                                        <button type="submit" class="w-full bg-orange-600 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl text-sm tracking-wide shadow transition cursor-pointer">Commit Structural Update to Cloud</button>
-                                    </div>
-                                </form>
-                            </div>
-
+                            <!-- STATS COUNTER BLOCKS -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
+                                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
                                     <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Cloud Records Found</div>
                                     <div class="text-3xl font-black text-gray-900 mt-1" x-text="students ? students.length : 0">0</div>
                                 </div>
-                                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
+                                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
                                     <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Pending Lockings Alerts</div>
                                     <div class="text-3xl font-black text-red-600 mt-1" x-text="students ? students.filter(s => s.status !== 'Complete').length : 0">0</div>
                                 </div>
                             </div>
 
+                            <!-- SEARCH BAR CONTROL -->
                             <div class="bg-white p-4 rounded-xl border border-gray-200 flex flex-col sm:flex-row justify-between gap-4 items-center shadow-xs">
                                 <div class="relative w-full sm:w-80">
-                                    <input type="text" x-model="searchQuery" placeholder="Search profiles, sections..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden">
+                                    <input type="text" x-model="searchQuery" placeholder="Search entries, ID numbers, parameters..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden bg-slate-50">
                                 </div>
+                                <div class="text-xs text-slate-400 font-medium italic">Use the sidebar config menu anytime to record adjustments</div>
                             </div>
 
-                            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs">
+                            <!-- TABLE MATRIX DISPLAY -->
+                            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
                                 <div class="overflow-x-auto">
                                     <table class="w-full text-left border-collapse">
                                         <thead class="bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
@@ -288,7 +301,7 @@
                                             </template>
                                             <template x-if="!students || students.length === 0">
                                                 <tr>
-                                                    <td colspan="6" class="px-6 py-8 text-center text-xs text-gray-400 italic">No records stored in the remote table yet. Add your first record above!</td>
+                                                    <td colspan="6" class="px-6 py-8 text-center text-xs text-gray-400 italic">No records stored in the remote table yet. Set configuration settings parameters in your left side panel structure!</td>
                                                 </tr>
                                             </template>
                                         </tbody>
@@ -298,6 +311,7 @@
                         </div>
                     </template>
 
+                    <!-- READ-ONLY STUDENT PERFORMANCE VIEW -->
                     <template x-if="activeSessionRole === 'student'">
                         <div class="space-y-6 max-w-4xl mx-auto">
                             <div class="bg-slate-900 rounded-2xl p-6 text-white shadow-md border border-orange-500/20 flex items-center gap-5">
@@ -318,6 +332,7 @@
                     </template>
                 </div>
 
+                <!-- VIEW 2: SECTIONS ROSTER -->
                 <div x-show="currentView === 'programs'" class="space-y-6" x-cloak style="display: none;">
                     <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
                         <div class="border-b border-gray-100 pb-4 mb-4">
@@ -355,6 +370,7 @@
         </div>
     </div>
 
+    <!-- Script Application Cloud Core Integration Logic -->
     <script>
         const SUPABASE_URL = "https://omgtnmdhzsviuqnbtraj.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_r7PIcJNOFyBHGrq5kyOxMg_xyzhd5Eg";
@@ -383,7 +399,6 @@
                 newSectionInput: '',
                 customSections: JSON.parse(localStorage.getItem('custom_sections')) || ['BSIT-4A-G1', 'BSIT-4B-G2'],
                 
-                // RESTORED COMPETE SCHEMA CONTAINER DATA LOCAL FIELDS
                 form: { student_id: '', name: '', email: '', program_section: '', document_name: '', document_code: '', schedule_info: '', status: 'Lockings' },
                 editingStudentId: null,
 
@@ -442,7 +457,6 @@
                             const recordLastName = nameParts[nameParts.length - 1].toLowerCase();
 
                             if (recordLastName === enteredLastName) {
-                                // Hydrate all local storage mapping layers cleanly
                                 const localMapping = JSON.parse(localStorage.getItem('student_sections')) || {};
                                 const localArchMapping = JSON.parse(localStorage.getItem('student_architecture')) || {};
                                 
@@ -552,13 +566,15 @@
                         schedule_info: student.schedule_info || '',
                         status: student.status
                     };
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    // Ensure layout opens sidebar or scrolls layout smoothly if modified on tiny screens
+                    if (window.innerWidth < 1024) {
+                        this.isSidebarOpen = true;
+                    }
                 },
 
                 async commitStudentForm() {
                     this.isLoading = true;
                     
-                    // Securely sanitize network object from unconfigured fields
                     const studentPayload = {
                         student_id: this.form.student_id,
                         name: this.form.name,
@@ -585,12 +601,10 @@
                         this.isLoading = false;
                         alert("🚨 SUPABASE ERROR: Could not commit student profile.\n\nReason: " + error.message);
                     } else {
-                        // Persist sections locally
                         const localMapping = JSON.parse(localStorage.getItem('student_sections')) || {};
                         localMapping[this.form.student_id] = this.form.program_section;
                         localStorage.setItem('student_sections', JSON.stringify(localMapping));
 
-                        // Persist Architecture Architecture details safely 
                         const localArchMapping = JSON.parse(localStorage.getItem('student_architecture')) || {};
                         localArchMapping[this.form.student_id] = {
                             document_name: this.form.document_name,
