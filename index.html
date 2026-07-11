@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudentSync - Consolidated Cloud Information Management System</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Alpine.js CDN -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <!-- Supabase JS Client CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         [x-cloak] { display: none !important; }
@@ -33,13 +30,68 @@
 </head>
 <body class="bg-slate-900 font-sans text-gray-800 antialiased min-h-screen" x-data="trackerApp()">
 
-    <!-- LOADING SCREEN INTERFACES -->
     <div x-show="isLoading" class="fixed inset-0 bg-slate-950/80 z-50 flex flex-col items-center justify-center text-white" x-cloak>
         <div class="w-12 h-12 border-4 border-t-orange-500 border-slate-700 rounded-full animate-spin mb-4"></div>
         <p class="text-xs font-mono tracking-widest uppercase text-slate-400">Processing Database Request...</p>
     </div>
 
-    <!-- AUTHENTICATION SCREEN -->
+    <div x-show="showFirstTimeWarning" class="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4" x-cloak>
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-amber-200 space-y-4">
+            <div class="flex items-center gap-3 text-amber-600">
+                <span class="text-3xl">⚠️</span>
+                <h3 class="text-lg font-bold text-slate-900">Account Setup Action Required</h3>
+            </div>
+            <p class="text-sm text-gray-600 leading-relaxed">
+                Welcome to your initial session! Before accessing your dashboard features, you are required to review, populate, and submit your core personal information record profile.
+            </p>
+            <div class="bg-slate-50 p-4 rounded-xl space-y-3 border border-gray-100">
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-500 uppercase">Contact Address / Location</label>
+                    <input type="text" x-model="firstTimeForm.address" placeholder="e.g., Cebu City, Philippines" class="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-500 uppercase">Mobile Phone Number</label>
+                    <input type="text" x-model="firstTimeForm.phone" placeholder="e.g., +63 912 345 6789" class="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-xs bg-white">
+                </div>
+            </div>
+            <button type="button" @click="saveFirstTimeProfile()" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs py-3 rounded-xl tracking-wide shadow transition cursor-pointer">Save & Synchronize Setup</button>
+        </div>
+    </div>
+
+    <div x-show="infoModal.open" class="fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4" x-cloak>
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 space-y-6">
+            <div class="flex justify-between items-start border-b border-gray-100 pb-3">
+                <div>
+                    <span class="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 bg-slate-100 rounded text-slate-600" x-text="infoModal.type + ' profile record'"></span>
+                    <h3 class="text-xl font-black text-slate-900 mt-1" x-text="infoModal.data.name"></h3>
+                </div>
+                <button @click="infoModal.open = false" class="text-gray-400 hover:text-gray-600 text-sm font-bold bg-gray-50 px-2 py-1 rounded transition cursor-pointer">✕ Close</button>
+            </div>
+            <div class="grid grid-cols-2 gap-4 text-xs">
+                <div class="bg-slate-50 p-3 rounded-lg">
+                    <span class="block font-bold text-gray-400 uppercase text-[9px]">Identity Key Number</span>
+                    <span class="font-mono font-bold text-slate-800" x-text="infoModal.data.student_id || infoModal.data.instructor_id"></span>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-lg">
+                    <span class="block font-bold text-gray-400 uppercase text-[9px]">Communication Link</span>
+                    <span class="font-medium text-slate-800" x-text="infoModal.data.email || 'No email configured'"></span>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-lg col-span-2">
+                    <span class="block font-bold text-gray-400 uppercase text-[9px]">Registered Node / Section</span>
+                    <span class="font-semibold text-slate-800" x-text="infoModal.data.program_section || 'General Access / Unassigned'"></span>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-lg">
+                    <span class="block font-bold text-gray-400 uppercase text-[9px]">Mobile Phone Connection</span>
+                    <span class="font-medium text-slate-800" x-text="infoModal.data.phone || '⚠️ No data provided'"></span>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-lg">
+                    <span class="block font-bold text-gray-400 uppercase text-[9px]">Home Address Matrix</span>
+                    <span class="font-medium text-slate-800" x-text="infoModal.data.address || '⚠️ No data provided'"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div x-show="!isLoggedIn" class="min-h-screen flex items-center justify-center px-4 py-12" x-cloak>
         <div class="max-w-md w-full space-y-6 bg-white p-8 rounded-2xl shadow-2xl relative z-10 border border-gray-100">
             <div class="text-center">
@@ -51,9 +103,10 @@
                 <p class="mt-2 text-center text-sm text-gray-600" x-text="authMode === 'login' ? 'Access your cloud database gateway' : 'Register a cloud administrator account'"></p>
             </div>
 
-            <div x-show="authMode === 'login'" class="bg-slate-100 p-1 rounded-xl grid grid-cols-2 text-center text-xs font-bold transition shadow-inner">
-                <button type="button" @click="selectedRole = 'admin'; authMessage = ''" :class="selectedRole === 'admin' ? 'bg-white text-orange-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'" class="py-2 rounded-lg transition cursor-pointer">🛠️ Administrator</button>
-                <button type="button" @click="selectedRole = 'student'; authMessage = ''" :class="selectedRole === 'student' ? 'bg-white text-orange-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'" class="py-2 rounded-lg transition cursor-pointer">🎓 Student Gateway</button>
+            <div x-show="authMode === 'login'" class="bg-slate-100 p-1 rounded-xl grid grid-cols-3 text-center text-[10px] font-bold transition shadow-inner gap-0.5">
+                <button type="button" @click="selectedRole = 'admin'; authMessage = ''" :class="selectedRole === 'admin' ? 'bg-white text-orange-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'" class="py-2 rounded-lg transition cursor-pointer">🛠️ Admin</button>
+                <button type="button" @click="selectedRole = 'instructor'; authMessage = ''" :class="selectedRole === 'instructor' ? 'bg-white text-orange-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'" class="py-2 rounded-lg transition cursor-pointer">👨‍🏫 Instructor</button>
+                <button type="button" @click="selectedRole = 'student'; authMessage = ''" :class="selectedRole === 'student' ? 'bg-white text-orange-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'" class="py-2 rounded-lg transition cursor-pointer">🎓 Student</button>
             </div>
             
             <div x-show="authMessage" x-text="authMessage" :class="isError ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-emerald-50 border border-emerald-200 text-emerald-700'" class="px-4 py-3 rounded-lg text-sm transition-all"></div>
@@ -66,8 +119,21 @@
                             <input type="email" x-model="loginForm.email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden" placeholder="admin@example.com">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Password</label>
+                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Secure Password Key</label>
                             <input type="password" x-model="loginForm.password" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden" placeholder="••••••••">
+                        </div>
+                    </div>
+                </template>
+
+                <template x-if="selectedRole === 'instructor'">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Instructor ID Key</label>
+                            <input type="text" x-model="instructorLoginForm.instructorId" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden" placeholder="e.g., INS-2026-88">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Instructor Account Email</label>
+                            <input type="email" x-model="instructorLoginForm.email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden" placeholder="instructor@university.edu">
                         </div>
                     </div>
                 </template>
@@ -79,13 +145,13 @@
                             <input type="text" x-model="studentLoginForm.studentId" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden" placeholder="e.g., STU-2026-001">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Last Name</label>
+                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Last Name Verification</label>
                             <input type="text" x-model="studentLoginForm.lastName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden" placeholder="e.g., Manigos">
                         </div>
                     </div>
                 </template>
 
-                <button type="submit" :class="selectedRole === 'student' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-slate-900 hover:bg-slate-800'" class="w-full py-2.5 px-4 text-sm font-semibold rounded-lg text-white transition shadow-md cursor-pointer">Sign In to Cloud Space</button>
+                <button type="submit" :class="selectedRole === 'student' ? 'bg-orange-600 hover:bg-orange-700' : (selectedRole === 'instructor' ? 'bg-teal-600 hover:bg-teal-700' : 'bg-slate-900 hover:bg-slate-800')" class="w-full py-2.5 px-4 text-sm font-semibold rounded-lg text-white transition shadow-md cursor-pointer">Sign In to Cloud Space</button>
                 <p x-show="selectedRole === 'admin'" class="text-center text-sm text-gray-600 mt-2">Need a shared admin cloud node? <button type="button" @click="switchMode('signup')" class="font-medium text-orange-600 hover:text-orange-500 cursor-pointer">Sign Up</button></p>
             </form>
 
@@ -104,15 +170,12 @@
         </div>
     </div>
 
-    <!-- PORTAL WORKING HOUSING -->
     <div x-show="isLoggedIn" class="flex min-h-screen relative bg-slate-50" style="display: none;" x-cloak>
-        <!-- Mobile Sidebar Overlay -->
         <div x-show="isSidebarOpen" @click="isSidebarOpen = false" class="fixed inset-0 bg-slate-950/50 z-40 transition-opacity" x-cloak></div>
 
-        <!-- SIDEBAR CONTAINER -->
         <aside class="fixed inset-y-0 left-0 w-76 bg-slate-900 text-white p-5 z-50 transform transition-transform duration-300 flex flex-col justify-between shadow-2xl overflow-y-auto" :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:static lg:h-screen'">
-            <div class="space-y-6">
-                <div class="flex flex-col border-b border-slate-800 pb-4 gap-3">
+            <div class="space-y-4">
+                <div class="flex flex-col border-b border-slate-800 pb-3 gap-2">
                     <div class="flex items-center justify-between w-full">
                         <div class="flex items-center gap-3">
                             <img class="ctu-seal-img !w-12 !shadow-none" src="ctu.png" alt="App Logo">
@@ -123,39 +186,61 @@
                     <span class="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 bg-slate-800 rounded-sm text-slate-400 block w-max" x-text="activeSessionRole + ' instance'"></span>
                 </div>
                 
-                <!-- Navigation -->
-                <nav class="space-y-2">
-                    <template x-if="activeSessionRole === 'admin'">
-                        <div class="space-y-2">
-                            <button @click="currentView = 'dashboard'; isSidebarOpen = false;" :class="currentView === 'dashboard' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition text-left cursor-pointer"><span>📋</span> Control Hub Dashboard</button>
-                            <!-- BRAND NEW FULL SCREEN CONFIGURATION NAVIGATION OPTION ENTRY -->
-                            <button @click="currentView = 'append_form'; isSidebarOpen = false;" :class="currentView === 'append_form' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition text-left cursor-pointer"><span>📝</span> Append Student Entry</button>
-                            <button @click="currentView = 'programs'; isSidebarOpen = false" :class="currentView === 'programs' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition text-left cursor-pointer"><span>🌿</span> Program / Section Roster</button>
+                <nav class="space-y-1">
+                    <template x-if="activeSessionRole === 'admin' || activeSessionRole === 'instructor'">
+                        <div class="space-y-1">
+                            <button @click="currentView = 'dashboard'; isSidebarOpen = false;" :class="currentView === 'dashboard' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-2 rounded-xl font-medium text-sm transition text-left cursor-pointer"><span>📋</span> Hub Dashboard</button>
+                            <button @click="currentView = 'append_form'; isSidebarOpen = false;" :class="currentView === 'append_form' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-2 rounded-xl font-medium text-sm transition text-left cursor-pointer"><span>📝</span> Append Student Entry</button>
+                            <button @click="currentView = 'directories'; isSidebarOpen = false;" :class="currentView === 'directories' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-2 rounded-xl font-medium text-sm transition text-left cursor-pointer"><span>👥</span> Personnel Directories</button>
+                            <button @click="currentView = 'programs'; isSidebarOpen = false" :class="currentView === 'programs' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-2 rounded-xl font-medium text-sm transition text-left cursor-pointer"><span>🌿</span> Section Roster Map</button>
                         </div>
                     </template>
                     <template x-if="activeSessionRole === 'student'">
-                        <div class="space-y-2">
-                            <button @click="currentView = 'dashboard'; isSidebarOpen = false" :class="currentView === 'dashboard' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition text-left cursor-pointer"><span>👤</span> Account Status</button>
+                        <div class="space-y-4">
+                            <button @click="currentView = 'dashboard'; isSidebarOpen = false" :class="currentView === 'dashboard' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-2 rounded-xl font-medium text-sm transition text-left cursor-pointer"><span>👤</span> Status Overview</button>
+                            
+                            <div class="border-t border-slate-800 pt-3 space-y-2">
+                                <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Upload Documents</div>
+                                <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700/60 space-y-2">
+                                    <input type="file" @change="alert('Cloud Storage Hook Triggered: Document cached successfully!')" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-orange-600 file:text-white hover:file:bg-orange-700 cursor-pointer">
+                                </div>
+                            </div>
                         </div>
                     </template>
                 </nav>
 
-                <!-- SECTION BUILDER TAGS LAYER IN SIDEBAR -->
-                <template x-if="activeSessionRole === 'admin'">
-                    <div class="border-t border-slate-800 pt-4 space-y-3">
-                        <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400">Section Editor</div>
-                        <div class="flex flex-col gap-2">
-                            <input type="text" x-model="newSectionInput" placeholder="Add e.g., BSIT-4B-G2" class="w-full px-3 py-2 border border-slate-700 bg-slate-800 rounded-lg text-xs font-semibold text-white placeholder-slate-500 focus:outline-hidden focus:ring-2 focus:ring-orange-500">
-                            <button type="button" @click="addNewSectionSlot()" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs py-2 rounded-lg transition cursor-pointer">➕ Create Section Option</button>
+                <template x-if="activeSessionRole === 'admin' || activeSessionRole === 'instructor'">
+                    <div class="border-t border-slate-800 pt-3 space-y-2">
+                        <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Section Editor Workspace</div>
+                        <div class="flex flex-col gap-1.5">
+                            <input type="text" x-model="newSectionInput" placeholder="Add e.g., BSIT-4B-G2" class="w-full px-2 py-1.5 border border-slate-700 bg-slate-800 rounded text-xs font-semibold text-white placeholder-slate-500 focus:outline-hidden">
+                            <button type="button" @click="addNewSectionSlot()" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold text-[10px] py-1.5 rounded transition cursor-pointer">➕ Create Section Option</button>
                         </div>
-                        
-                        <div class="space-y-1.5 pt-1 max-h-40 overflow-y-auto pr-1">
+                        <div class="space-y-1 max-h-24 overflow-y-auto pr-1">
                             <template x-for="sect in customSections" :key="sect">
-                                <div class="bg-slate-800 px-2.5 py-1.5 rounded-md text-xs flex justify-between items-center text-slate-300">
+                                <div class="bg-slate-800 px-2 py-1 rounded text-[11px] flex justify-between items-center text-slate-300">
                                     <span x-text="sect"></span>
-                                    <button @click="removeSectionSlot(sect)" class="text-[10px] text-red-400 hover:text-red-600 font-bold bg-slate-900/50 px-1 rounded transition cursor-pointer">✕</button>
+                                    <button @click="removeSectionSlot(sect)" class="text-[9px] text-red-400 hover:text-red-600 font-bold bg-slate-900/50 px-1 rounded transition cursor-pointer">✕</button>
                                 </div>
                             </template>
+                        </div>
+                    </div>
+                </template>
+
+                <template x-if="activeSessionRole === 'admin'">
+                    <div class="border-t border-slate-800 pt-3 space-y-2">
+                        <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Add Instructor Entry</div>
+                        <div class="bg-slate-800/50 p-2.5 rounded-xl border border-slate-700/60 space-y-2 text-xs">
+                            <div>
+                                <input type="text" x-model="instructorForm.id" placeholder="Instructor ID (e.g., INS-101)" class="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded text-white focus:outline-hidden text-xs">
+                            </div>
+                            <div>
+                                <input type="text" x-model="instructorForm.name" placeholder="Full Instructor Name" class="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded text-white focus:outline-hidden text-xs">
+                            </div>
+                            <div>
+                                <input type="email" x-model="instructorForm.email" placeholder="Email Address Link" class="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded text-white focus:outline-hidden text-xs">
+                            </div>
+                            <button type="button" @click="saveInstructorProfileRow()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-1.5 rounded transition text-[11px] cursor-pointer">Register Instructor</button>
                         </div>
                     </div>
                 </template>
@@ -166,11 +251,10 @@
             </div>
         </aside>
 
-        <!-- MAIN CONTENT WORKSPACE -->
         <div class="flex-1 flex flex-col min-w-0">
             <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-4 justify-between shrink-0 shadow-xs">
                 <div class="flex items-center gap-4">
-                    <button @click="isSidebarOpen = !isSidebarOpen" class="lg:hidden bg-slate-950 text-white hover:bg-slate-800 px-4 py-2 rounded-xl text-sm font-semibold transition shadow-sm flex items-center gap-2 cursor-pointer"><span>☰</span> Menu</button>
+                    <button @click="isSidebarOpen = !isSidebarOpen" class="lg:hidden bg-slate-950 text-white hover:bg-slate-800 px-4 py-2 rounded-xl text-sm font-semibold transition shadow-sm cursor-pointer">☰ Menu</button>
                     <div class="flex items-center gap-4">
                         <img class="ctu-seal-img !w-14 sm:!w-16 !shadow-none" src="ctu.png" alt="App Logo">
                         <h2 class="text-xl font-bold text-slate-900 tracking-tight">Academic Cloud Workspace</h2>
@@ -180,13 +264,9 @@
             </header>
 
             <main class="flex-1 p-6 bg-slate-50/50 overflow-y-auto">
-                <!-- VIEW 1: HUB DASHBOARD -->
                 <div x-show="currentView === 'dashboard'" class="space-y-6" x-cloak>
-                    <!-- ADMIN OPERATIONS VIEW -->
-                    <template x-if="activeSessionRole === 'admin'">
+                    <template x-if="activeSessionRole === 'admin' || activeSessionRole === 'instructor'">
                         <div class="space-y-6">
-                            
-                            <!-- STATS COUNTER BLOCKS -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
                                     <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Cloud Records Found</div>
@@ -198,14 +278,6 @@
                                 </div>
                             </div>
 
-                            <div class="bg-white p-4 rounded-xl border border-gray-200 flex flex-col sm:flex-row justify-between gap-4 items-center shadow-xs">
-                                <div class="relative w-full sm:w-80">
-                                    <input type="text" x-model="searchQuery" placeholder="Search profiles, sections..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden">
-                                </div>
-                                <button type="button" @click="currentView = 'append_form'" class="bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition shadow cursor-pointer">➕ Add New Record Profile</button>
-                            </div>
-
-                            <!-- TABLE MATRIX DISPLAY -->
                             <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
                                 <div class="overflow-x-auto">
                                     <table class="w-full text-left border-collapse">
@@ -214,34 +286,18 @@
                                                 <th class="px-6 py-4">Assigned ID Number</th>
                                                 <th class="px-6 py-4">Full Student Name</th>
                                                 <th class="px-6 py-4">Program / Section</th>
-                                                <th class="px-6 py-4">Arch. Details</th>
-                                                <th class="px-6 py-4">Document Compliance</th>
-                                                <th class="px-6 py-4 text-right">Cloud Config</th>
+                                                <th class="px-6 py-4">Compliance Status</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-gray-200 text-sm">
-                                            <template x-for="student in filteredStudents()" :key="student.id">
+                                            <template x-for="student in students" :key="student.id">
                                                 <tr class="hover:bg-slate-50/70 transition">
                                                     <td class="px-6 py-4 font-mono font-bold text-orange-600 text-xs" x-text="student.student_id"></td>
                                                     <td class="px-6 py-4 font-bold text-gray-900" x-text="student.name"></td>
                                                     <td class="px-6 py-4 font-semibold text-slate-700" x-text="student.program_section || 'Unassigned'"></td>
-                                                    <td class="px-6 py-4 text-xs space-y-0.5 text-gray-500">
-                                                        <div class="font-medium text-slate-800" x-text="student.document_name ? '📝 ' + student.document_name : ''"></div>
-                                                        <div x-text="student.document_code ? '🆔 ' + student.document_code : ''"></div>
-                                                        <div class="italic text-[11px]" x-text="student.schedule_info ? '⏰ ' + student.schedule_info : ''"></div>
-                                                    </td>
                                                     <td class="px-6 py-4">
-                                                        <span :class="student.status === 'Complete' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'" class="px-2.5 py-1 text-xs font-bold rounded-full border" x-text="student.status === 'Complete' ? '✅ Complete' : '⚠️ Has Lockings'"></span>
+                                                        <span :class="student.status === 'Complete' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'" class="px-2.5 py-1 text-xs font-bold rounded-full border" x-text="student.status"></span>
                                                     </td>
-                                                    <td class="px-6 py-4 text-right space-x-3 whitespace-nowrap">
-                                                        <button @click="startEditStudent(student)" class="text-orange-600 hover:text-orange-900 font-bold text-xs underline cursor-pointer">Modify</button>
-                                                        <button @click="deleteStudent(student.id)" class="text-red-500 hover:text-red-700 font-bold text-xs underline cursor-pointer">Delete</button>
-                                                    </td>
-                                                </tr>
-                                            </template>
-                                            <template x-if="!students || students.length === 0">
-                                                <tr>
-                                                    <td colspan="6" class="px-6 py-8 text-center text-xs text-gray-400 italic">No records stored in the remote table yet. Go to Append Entry to add profiles!</td>
                                                 </tr>
                                             </template>
                                         </tbody>
@@ -251,20 +307,26 @@
                         </div>
                     </template>
 
-                    <!-- READ-ONLY STUDENT PERFORMANCE VIEW -->
                     <template x-if="activeSessionRole === 'student'">
                         <div class="space-y-6 max-w-4xl mx-auto">
-                            <div class="bg-slate-900 rounded-2xl p-6 text-white shadow-md border border-orange-500/20 flex items-center gap-5">
-                                <img class="ctu-seal-img !w-20 sm:!w-24" src="ctu.png" alt="App Logo">
-                                <div>
-                                    <h3 class="text-xl font-bold">Welcome back, <span x-text="studentUserMeta.name"></span>!</h3>
-                                    <p class="text-xs text-orange-200 mt-1" x-text="'Verified Cloud Identity: ' + studentUserMeta.student_id"></p>
-                                    <p class="text-xs text-slate-300 font-mono mt-0.5" x-text="'Registered Section: ' + (studentUserMeta.program_section || 'Unassigned Section')"></p>
-                                    <div class="mt-3 pt-3 border-t border-slate-800 text-xs text-slate-400 space-y-1" x-show="studentUserMeta.document_name">
-                                        <div class="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Your Requirement Architecture:</div>
-                                        <div x-text="'Target Assignment: ' + studentUserMeta.document_name"></div>
-                                        <div x-text="'Control Code: ' + studentUserMeta.document_code"></div>
-                                        <div x-text="'Assigned Timeline: ' + studentUserMeta.schedule_info"></div>
+                            <div class="bg-slate-900 rounded-2xl p-6 text-white shadow-md border border-orange-500/20 flex flex-col sm:flex-row items-center gap-5">
+                                <img class="ctu-seal-img !w-20 sm:!w-24 bg-white/10 p-1" src="ctu.png" alt="App Logo">
+                                <div class="text-center sm:text-left">
+                                    <h3 class="text-2xl font-black tracking-tight">Welcome back, <span class="text-orange-400" x-text="studentUserMeta.name"></span>!</h3>
+                                    <p class="text-xs text-slate-400 font-mono mt-1" x-text="'System Credentials Key: ' + studentUserMeta.student_id"></p>
+                                    <p class="text-sm font-semibold text-orange-200 mt-0.5" x-text="'Section: ' + (studentUserMeta.program_section || 'Not Configured yet')"></p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
+                                    <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Total Account Lockings Count</span>
+                                    <div class="text-4xl font-black mt-2" :class="studentUserMeta.status === 'Complete' ? 'text-emerald-600' : 'text-rose-600'" x-text="studentUserMeta.status === 'Complete' ? '0' : '1'"></div>
+                                </div>
+                                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
+                                    <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Enrollment Compliance Matrix</span>
+                                    <div class="mt-2">
+                                        <span class="px-3 py-1.5 font-bold text-xs rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200" x-text="studentUserMeta.program_section ? 'Verified Enrolled' : 'Pending Profile Section'"></span>
                                     </div>
                                 </div>
                             </div>
@@ -272,107 +334,128 @@
                     </template>
                 </div>
 
-                <!-- VIEW 2: LARGE FULL SCREEN ENTRY OPTIONS VIEW -->
+                <div x-show="currentView === 'directories'" class="space-y-8" x-cloak style="display: none;">
+                    <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+                        <div class="border-b border-gray-100 pb-3">
+                            <h3 class="text-lg font-black text-slate-900">👨‍🏫 Registered Instructors Directory</h3>
+                            <p class="text-xs text-gray-500">Click on an instructor row to display full personal information archives.</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-50 text-gray-500 font-bold text-[11px] uppercase tracking-wider border-b border-gray-200">
+                                    <tr>
+                                        <th class="px-4 py-3">Instructor ID</th>
+                                        <th class="px-4 py-3">Instructor Name</th>
+                                        <th class="px-4 py-3">Email Address Node</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    <template x-for="inst in instructors" :key="inst.instructor_id">
+                                        <tr @click="openProfileModal(inst, 'Instructor')" class="hover:bg-slate-50 transition cursor-pointer">
+                                            <td class="px-4 py-3 font-mono text-xs font-bold text-teal-600" x-text="inst.instructor_id"></td>
+                                            <td class="px-4 py-3 font-semibold text-slate-900" x-text="inst.name"></td>
+                                            <td class="px-4 py-3 text-gray-600" x-text="inst.email"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-4">
+                        <div class="border-b border-gray-100 pb-3">
+                            <h3 class="text-lg font-black text-slate-900">🎓 Registered Students Directory</h3>
+                            <p class="text-xs text-gray-500">Click on a student entry row to load cloud contact parameters.</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-50 text-gray-500 font-bold text-[11px] uppercase tracking-wider border-b border-gray-200">
+                                    <tr>
+                                        <th class="px-4 py-3">Student ID</th>
+                                        <th class="px-4 py-3">Student Full Name</th>
+                                        <th class="px-4 py-3">Class Section</th>
+                                        <th class="px-4 py-3">Compliance</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    <template x-for="stud in students" :key="stud.id">
+                                        <tr @click="openProfileModal(stud, 'Student')" class="hover:bg-slate-50 transition cursor-pointer">
+                                            <td class="px-4 py-3 font-mono text-xs font-bold text-orange-600" x-text="stud.student_id"></td>
+                                            <td class="px-4 py-3 font-semibold text-slate-900" x-text="stud.name"></td>
+                                            <td class="px-4 py-3 text-slate-600" x-text="stud.program_section || 'Unassigned Section'"></td>
+                                            <td class="px-4 py-3">
+                                                <span :class="stud.status === 'Complete' ? 'text-emerald-600' : 'text-red-500 font-bold'" class="text-xs" x-text="stud.status"></span>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <div x-show="currentView === 'append_form'" class="space-y-6" x-cloak style="display: none;">
                     <div class="max-w-4xl mx-auto bg-white rounded-2xl border border-gray-200 shadow-md p-8 space-y-6">
                         <div class="flex justify-between items-center border-b border-gray-100 pb-4">
                             <div>
-                                <h3 class="text-lg font-bold text-slate-900" x-text="editingStudentId ? 'Append New Cloud Student Entry & Config (Editing Mode)' : 'Append New Cloud Student Entry & Config'"></h3>
-                                <p class="text-xs text-gray-500 mt-0.5">Configure cloud parameters, customize sections assignments, and construct item control rules.</p>
+                                <h3 class="text-lg font-bold text-slate-900">Append New Cloud Student Entry</h3>
                             </div>
-                            <button type="button" @click="resetForm(); currentView = 'dashboard'" class="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-200 tracking-wide transition">✕ Close Screen</button>
+                            <button type="button" @click="resetForm(); currentView = 'dashboard'" class="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer">✕ Close Screen</button>
                         </div>
                         
                         <form @submit.prevent="commitStudentForm()" class="space-y-6">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Assign Student ID Number</label>
-                                    <input type="text" x-model="form.student_id" :disabled="editingStudentId" placeholder="e.g., STU-2026-001" required class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 disabled:bg-gray-50">
+                                    <input type="text" x-model="form.student_id" placeholder="e.g., STU-2026-001" required class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-hidden">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Full Student Name</label>
-                                    <input type="text" x-model="form.name" placeholder="e.g., Johnro E." required class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500">
+                                    <input type="text" x-model="form.name" placeholder="e.g., Johnro E." required class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-hidden">
                                 </div>
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Contact Email</label>
-                                    <input type="email" x-model="form.email" placeholder="student@example.com" required class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500">
+                                    <input type="email" x-model="form.email" placeholder="student@example.com" required class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-hidden">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Program / Section Assignment</label>
-                                    <select x-model="form.program_section" required class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500">
-                                        <option value="">e.g., BSIT-4A-G1</option>
+                                    <select x-model="form.program_section" required class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-hidden">
+                                        <option value="">-- Select Active Section Option --</option>
                                         <template x-for="section in getUniqueSections()" :key="section">
                                             <option :value="section" x-text="section"></option>
                                         </template>
                                     </select>
                                 </div>
                             </div>
-
-                            <!-- CUSTOM ARCHITECTURE FRAMEWORK INTERFACE -->
-                            <div class="border border-slate-200 bg-slate-50/50 rounded-xl p-5 space-y-4">
-                                <div class="text-xs font-extrabold text-slate-800 uppercase tracking-wider border-b border-slate-200/60 pb-2">Custom Document Architecture & Schedule Timelines Setup</div>
-                                
-                                <div>
-                                    <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-tight mb-1.5">Custom Requirement Name</label>
-                                    <input type="text" x-model="form.document_name" placeholder="e.g., Embedded Systems Design Portfolio" class="w-full px-3 py-2.5 border border-gray-200 bg-white rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500">
-                                </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-tight mb-1.5">Document Control Number / Code</label>
-                                        <input type="text" x-model="form.document_code" placeholder="e.g., DOC-CTRL-992" class="w-full px-3 py-2.5 border border-gray-200 bg-white rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-tight mb-1.5">Custom Timeline Schedule Info</label>
-                                        <input type="text" x-model="form.schedule_info" placeholder="e.g., Mon/Wed 09:00 AM" class="w-full px-3 py-2.5 border border-gray-200 bg-white rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500">
-                                    </div>
-                                </div>
-                            </div>
-
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">File Inspection Compliance Status</label>
-                                <select x-model="form.status" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-hidden focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500">
+                                <select x-model="form.status" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-hidden">
                                     <option value="Complete">Complete (Clear Status)</option>
                                     <option value="Lockings">Lockings (Has Outstanding Requirements)</option>
                                 </select>
                             </div>
-                            
-                            <div class="flex gap-4 pt-2">
-                                <button type="submit" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl text-sm tracking-wide shadow transition cursor-pointer">Commit Structural Update to Cloud</button>
-                                <button type="button" @click="resetForm(); currentView = 'dashboard'" class="px-6 py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">Cancel</button>
-                            </div>
+                            <button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl text-sm tracking-wide shadow transition cursor-pointer">Commit Structural Update to Cloud</button>
                         </form>
                     </div>
                 </div>
 
-                <!-- VIEW 3: SECTIONS ROSTER -->
                 <div x-show="currentView === 'programs'" class="space-y-6" x-cloak style="display: none;">
                     <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
                         <div class="border-b border-gray-100 pb-4 mb-4">
-                            <h3 class="text-lg font-bold text-slate-900">Program & Section Roster</h3>
-                            <p class="text-xs text-gray-500">Overview of student distributions across configured sections.</p>
+                            <h3 class="text-lg font-bold text-slate-900">Program & Section Roster Map</h3>
                         </div>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <template x-for="sectionName in getUniqueSections()" :key="sectionName">
-                                <div class="border border-gray-200 rounded-xl p-4 bg-slate-50/50 relative">
-                                    <div class="flex justify-between items-center border-b border-gray-200 pb-2 mb-3">
+                                <div class="border border-gray-200 rounded-xl p-4 bg-slate-50">
+                                    <div class="flex justify-between items-center border-b border-gray-200 pb-2 mb-2">
                                         <span class="font-bold text-slate-900 text-sm" x-text="sectionName"></span>
-                                        <span class="text-xs font-bold bg-orange-100 text-orange-800 px-2.5 py-0.5 rounded-full" x-text="students.filter(s => s.program_section === sectionName).length + ' Members' "></span>
+                                        <span class="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full" x-text="students.filter(s => s.program_section === sectionName).length + ' Members'"></span>
                                     </div>
-                                    <ul class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                    <ul class="text-xs space-y-1">
                                         <template x-for="st in students.filter(s => s.program_section === sectionName)" :key="st.id">
-                                            <li class="bg-white p-2 rounded border border-gray-100 text-xs flex justify-between items-center">
-                                                <div class="flex flex-col">
-                                                    <span class="font-medium text-gray-800" x-text="st.name"></span>
-                                                    <span class="text-[10px] text-gray-400" x-text="st.document_name ? st.document_name : 'No design architecture data'"></span>
-                                                </div>
-                                                <span :class="st.status === 'Complete' ? 'text-emerald-600' : 'text-rose-600 font-bold'" x-text="st.status === 'Complete' ? 'Clear' : 'Lockings'"></span>
-                                            </li>
-                                        </template>
-                                        <template x-if="students.filter(s => s.program_section === sectionName).length === 0">
-                                            <li class="text-center text-[11px] text-gray-400 italic py-2">No students assigned to this section yet.</li>
+                                            <li class="bg-white p-2 border border-gray-100 rounded flex justify-between" x-text="st.name"></li>
                                         </template>
                                     </ul>
                                 </div>
@@ -384,7 +467,6 @@
         </div>
     </div>
 
-    <!-- Script Application Cloud Core Integration Logic -->
     <script>
         const SUPABASE_URL = "https://omgtnmdhzsviuqnbtraj.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_r7PIcJNOFyBHGrq5kyOxMg_xyzhd5Eg";
@@ -405,30 +487,28 @@
                 loginForm: { email: '', password: '' },
                 signUpForm: { email: '', password: '' },
                 studentLoginForm: { studentId: '', lastName: '' },
-                authMessage: '', isError: false,
+                instructorLoginForm: { instructorId: '', email: '' },
+                
+                instructorForm: { id: '', name: '', email: '' },
+                instructors: JSON.parse(localStorage.getItem('registered_instructors')) || [],
 
+                infoModal: { open: false, type: '', data: {} },
+
+                showFirstTimeWarning: false,
+                firstTimeForm: { address: '', phone: '' },
+
+                authMessage: '', isError: false,
                 studentUserMeta: JSON.parse(sessionStorage.getItem('studentUserMeta')) || {}, 
+                instructorUserMeta: JSON.parse(sessionStorage.getItem('instructorUserMeta')) || {},
                 students: [],
-                searchQuery: '',
                 newSectionInput: '',
                 customSections: JSON.parse(localStorage.getItem('custom_sections')) || ['BSIT-4A-G1', 'BSIT-4B-G2'],
-                
-                form: { student_id: '', name: '', email: '', program_section: '', document_name: '', document_code: '', schedule_info: '', status: 'Lockings' },
-                editingStudentId: null,
+                form: { student_id: '', name: '', email: '', program_section: '', status: 'Lockings' },
 
                 async init() {
-                    const { data: { session } } = await supabaseClient.auth.getSession();
-                    if (session && this.activeSessionRole === 'admin') {
-                        this.isLoggedIn = true;
-                        await this.fetchCloudRecords();
-                    } else if (this.isLoggedIn && this.activeSessionRole === 'student') {
+                    if (this.isLoggedIn) {
                         await this.fetchCloudRecords();
                     }
-                },
-
-                switchMode(mode) {
-                    this.authMode = mode;
-                    this.authMessage = '';
                 },
 
                 async handleSignUp() {
@@ -441,7 +521,7 @@
                     if (error) {
                         this.setMessage(error.message, true);
                     } else {
-                        this.setMessage('Admin registered! Clear login options to check instance access.', false);
+                        this.setMessage('Admin registered successfully!', false);
                         this.switchMode('login');
                     }
                 },
@@ -449,6 +529,29 @@
                 async handleLogin() {
                     this.isLoading = true;
                     this.authMessage = '';
+
+                    if (this.selectedRole === 'instructor') {
+                        const targetIns = this.instructors.find(i => i.instructor_id === this.instructorLoginForm.instructorId.trim() && i.email === this.instructorLoginForm.email.trim());
+                        this.isLoading = false;
+                        if (targetIns) {
+                            this.isLoggedIn = true;
+                            this.activeSessionRole = 'instructor';
+                            this.instructorUserMeta = targetIns;
+                            sessionStorage.setItem('isLoggedIn', 'true');
+                            sessionStorage.setItem('activeSessionRole', 'instructor');
+                            sessionStorage.setItem('instructorUserMeta', JSON.stringify(targetIns));
+                            
+                            const warningsMap = JSON.parse(localStorage.getItem('warning_compliance')) || {};
+                            if (!warningsMap[targetIns.instructor_id]) {
+                                this.showFirstTimeWarning = true;
+                            }
+                            await this.fetchCloudRecords();
+                            this.currentView = 'dashboard';
+                        } else {
+                            this.setMessage('Invalid Instructor identity parameters.', true);
+                        }
+                        return;
+                    }
 
                     if (this.selectedRole === 'student') {
                         const enteredId = this.studentLoginForm.studentId.trim();
@@ -460,11 +563,6 @@
                             .eq('student_id', enteredId);
 
                         this.isLoading = false;
-                        if (error) {
-                            this.setMessage('Database connection error checking student index.', true);
-                            return;
-                        }
-
                         if (data && data.length > 0) {
                             const record = data[0];
                             const nameParts = record.name.trim().split(' ');
@@ -472,13 +570,11 @@
 
                             if (recordLastName === enteredLastName) {
                                 const localMapping = JSON.parse(localStorage.getItem('student_sections')) || {};
-                                const localArchMapping = JSON.parse(localStorage.getItem('student_architecture')) || {};
+                                const personalDetails = JSON.parse(localStorage.getItem('personal_details_archive')) || {};
                                 
                                 record.program_section = localMapping[record.student_id] || '';
-                                const meta = localArchMapping[record.student_id] || {};
-                                record.document_name = meta.document_name || '';
-                                record.document_code = meta.document_code || '';
-                                record.schedule_info = meta.schedule_info || '';
+                                record.address = personalDetails[record.student_id]?.address || '';
+                                record.phone = personalDetails[record.student_id]?.phone || '';
 
                                 this.isLoggedIn = true;
                                 this.activeSessionRole = 'student';
@@ -487,12 +583,17 @@
                                 sessionStorage.setItem('isLoggedIn', 'true');
                                 sessionStorage.setItem('activeSessionRole', 'student');
                                 sessionStorage.setItem('studentUserMeta', JSON.stringify(record));
+
+                                const warningsMap = JSON.parse(localStorage.getItem('warning_compliance')) || {};
+                                if (!warningsMap[record.student_id]) {
+                                    this.showFirstTimeWarning = true;
+                                }
                                 this.currentView = 'dashboard';
                             } else {
                                 this.setMessage('Last Name matching verification rejected.', true);
                             }
                         } else {
-                            this.setMessage('No student record found with that cloud matching ID key.', true);
+                            this.setMessage('No matching student ID code found.', true);
                         }
                         return;
                     }
@@ -502,8 +603,8 @@
                         password: this.loginForm.password
                     });
 
+                    this.isLoading = false;
                     if (error) {
-                        this.isLoading = false;
                         this.setMessage(error.message, true);
                     } else {
                         this.activeSessionRole = 'admin';
@@ -511,157 +612,42 @@
                         sessionStorage.setItem('isLoggedIn', 'true');
                         sessionStorage.setItem('activeSessionRole', 'admin');
                         await this.fetchCloudRecords();
-                        this.isLoading = false;
                         this.currentView = 'dashboard';
                     }
                 },
 
-                async fetchCloudRecords() {
-                    this.isLoading = true;
-                    try {
-                        const { data, error } = await supabaseClient
-                            .from('students')
-                            .select('*')
-                            .order('created_at', { ascending: false });
-
-                        if (!error && data) {
-                            const localMapping = JSON.parse(localStorage.getItem('student_sections')) || {};
-                            const localArchMapping = JSON.parse(localStorage.getItem('student_architecture')) || {};
-                            
-                            this.students = data.map(s => {
-                                const arch = localArchMapping[s.student_id] || {};
-                                return {
-                                    ...s,
-                                    program_section: localMapping[s.student_id] || '',
-                                    document_name: arch.document_name || '',
-                                    document_code: arch.document_code || '',
-                                    schedule_info: arch.schedule_info || ''
-                                };
-                            });
-                        } else {
-                            this.students = [];
-                        }
-                    } catch (e) {
-                        console.error(e);
-                        this.students = [];
-                    } finally {
-                        this.isLoading = false;
+                saveFirstTimeProfile() {
+                    const currentId = this.activeSessionRole === 'student' ? this.studentUserMeta.student_id : this.instructorUserMeta.instructor_id;
+                    if (!this.firstTimeForm.address || !this.firstTimeForm.phone) {
+                        return alert("All details must be completely filled to fulfill compliance tracking rules.");
                     }
-                },
 
-                async handleLogout() {
-                    await supabaseClient.auth.signOut();
-                    this.isLoggedIn = false;
-                    this.activeSessionRole = '';
-                    this.studentUserMeta = {};
-                    sessionStorage.clear();
-                    this.switchMode('login');
-                },
-
-                setMessage(text, errorStatus) {
-                    this.authMessage = text;
-                    this.isError = errorStatus;
-                },
-
-                resetForm() {
-                    this.editingStudentId = null;
-                    this.form = { student_id: '', name: '', email: '', program_section: '', document_name: '', document_code: '', schedule_info: '', status: 'Lockings' };
-                },
-
-                startEditStudent(student) {
-                    this.editingStudentId = student.id;
-                    this.form = {
-                        student_id: student.student_id,
-                        name: student.name,
-                        email: student.email,
-                        program_section: student.program_section || '',
-                        document_name: student.document_name || '',
-                        document_code: student.document_code || '',
-                        schedule_info: student.schedule_info || '',
-                        status: student.status
+                    const personalArchive = JSON.parse(localStorage.getItem('personal_details_archive')) || {};
+                    personalArchive[currentId] = {
+                        address: this.firstTimeForm.address,
+                        phone: this.firstTimeForm.phone
                     };
-                    this.currentView = 'append_form';
-                },
+                    localStorage.setItem('personal_details_archive', JSON.stringify(personalArchive));
 
-                async commitStudentForm() {
-                    this.isLoading = true;
-                    
-                    const studentPayload = {
-                        student_id: this.form.student_id,
-                        name: this.form.name,
-                        email: this.form.email,
-                        status: this.form.status
-                    };
+                    const warningsMap = JSON.parse(localStorage.getItem('warning_compliance')) || {};
+                    warningsMap[currentId] = true;
+                    localStorage.setItem('warning_compliance', JSON.stringify(warningsMap));
 
-                    let error = null;
-
-                    if (this.editingStudentId) {
-                        const res = await supabaseClient
-                            .from('students')
-                            .update(studentPayload)
-                            .eq('id', this.editingStudentId);
-                        error = res.error;
-                    } else {
-                        const res = await supabaseClient
-                            .from('students')
-                            .insert([studentPayload]);
-                        error = res.error;
-                    }
-
-                    if (error) {
-                        this.isLoading = false;
-                        alert("🚨 SUPABASE ERROR: Could not commit student profile.\n\nReason: " + error.message);
-                    } else {
-                        const localMapping = JSON.parse(localStorage.getItem('student_sections')) || {};
-                        localMapping[this.form.student_id] = this.form.program_section;
-                        localStorage.setItem('student_sections', JSON.stringify(localMapping));
-
-                        const localArchMapping = JSON.parse(localStorage.getItem('student_architecture')) || {};
-                        localArchMapping[this.form.student_id] = {
-                            document_name: this.form.document_name,
-                            document_code: this.form.document_code,
-                            schedule_info: this.form.schedule_info
-                        };
-                        localStorage.setItem('student_architecture', JSON.stringify(localArchMapping));
-
-                        await this.fetchCloudRecords();
-                        this.resetForm();
-                        this.currentView = 'dashboard';
-                    }
-                },
-
-                async deleteStudent(id) {
-                    if (confirm("Permanently erase this data record row from the remote cloud?")) {
-                        this.isLoading = true;
-                        
-                        const targetStudent = this.students.find(s => s.id === id);
-                        if (targetStudent) {
-                            const localMapping = JSON.parse(localStorage.getItem('student_sections')) || {};
-                            delete localMapping[targetStudent.student_id];
-                            localStorage.setItem('student_sections', JSON.stringify(localMapping));
-
-                            const localArchMapping = JSON.parse(localStorage.getItem('student_architecture')) || {};
-                            delete localArchMapping[targetStudent.student_id];
-                            localStorage.setItem('student_architecture', JSON.stringify(localArchMapping));
-                        }
-
-                        await supabaseClient.from('students').delete().eq('id', id);
-                        await this.fetchCloudRecords();
-                    }
+                    this.showFirstTimeWarning = false;
+                    alert("Profile settings synchronized successfully!");
+                    this.fetchCloudRecords();
                 },
 
                 addNewSectionSlot() {
                     const cleaned = this.newSectionInput.trim();
-                    if (!cleaned) return alert("Please type a section designation identifier.");
-                    if (this.customSections.includes(cleaned)) return alert("This Section profile already exists.");
+                    if (!cleaned) return;
+                    if (this.customSections.includes(cleaned)) return alert("Section already exists.");
                     this.customSections.push(cleaned);
                     localStorage.setItem('custom_sections', JSON.stringify(this.customSections));
                     this.newSectionInput = '';
                 },
 
                 removeSectionSlot(sectionName) {
-                    const count = this.students.filter(s => s.program_section === sectionName).length;
-                    if (count > 0) return alert("Cannot delete active section filled with student profiles.");
                     this.customSections = this.customSections.filter(s => s !== sectionName);
                     localStorage.setItem('custom_sections', JSON.stringify(this.customSections));
                 },
@@ -671,17 +657,79 @@
                     return [...new Set([...this.customSections, ...activeDbSections])];
                 },
 
-                filteredStudents() {
-                    if (!this.students) return [];
-                    return this.students.filter(s => {
-                        if (!s || !s.name) return false;
-                        const query = this.searchQuery.toLowerCase();
-                        return s.name.toLowerCase().includes(query) || 
-                               s.student_id.toLowerCase().includes(query) ||
-                               (s.program_section && s.program_section.toLowerCase().includes(query)) ||
-                               (s.document_name && s.document_name.toLowerCase().includes(query));
-                    });
-                }
+                saveInstructorProfileRow() {
+                    const id = this.instructorForm.id.trim();
+                    const name = this.instructorForm.name.trim();
+                    const email = this.instructorForm.email.trim();
+
+                    if (!id || !name || !email) return alert("Please fill out all Instructor fields.");
+                    if (this.instructors.some(i => i.instructor_id === id)) return alert("Instructor ID already exists.");
+
+                    this.instructors.push({ instructor_id: id, name: name, email: email });
+                    localStorage.setItem('registered_instructors', JSON.stringify(this.instructors));
+                    
+                    this.instructorForm = { id: '', name: '', email: '' };
+                    alert("Instructor registered successfully!");
+                },
+
+                openProfileModal(targetData, type) {
+                    const targetId = targetData.student_id || targetData.instructor_id;
+                    const personalArchive = JSON.parse(localStorage.getItem('personal_details_archive')) || {};
+                    
+                    const enriched = { ...targetData };
+                    enriched.address = personalArchive[targetId]?.address || 'No personal address data saved.';
+                    enriched.phone = personalArchive[targetId]?.phone || 'No direct telephone line found.';
+
+                    this.infoModal = { open: true, type: type, data: enriched };
+                },
+
+                async fetchCloudRecords() {
+                    this.isLoading = true;
+                    try {
+                        const { data, error } = await supabaseClient.from('students').select('*');
+                        if (!error && data) {
+                            const localMapping = JSON.parse(localStorage.getItem('student_sections')) || {};
+                            this.students = data.map(s => ({
+                                ...s,
+                                program_section: localMapping[s.student_id] || ''
+                            }));
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+
+                async commitStudentForm() {
+                    this.isLoading = true;
+                    const payload = { student_id: this.form.student_id, name: this.form.name, email: this.form.email, status: this.form.status };
+                    
+                    const { error } = await supabaseClient.from('students').insert([payload]);
+                    if (error) {
+                        alert(error.message);
+                        this.isLoading = false;
+                    } else {
+                        const localMapping = JSON.parse(localStorage.getItem('student_sections')) || {};
+                        localMapping[this.form.student_id] = this.form.program_section;
+                        localStorage.setItem('student_sections', JSON.stringify(localMapping));
+
+                        await this.fetchCloudRecords();
+                        this.resetForm();
+                        this.currentView = 'dashboard';
+                    }
+                },
+
+                handleLogout() {
+                    this.isLoggedIn = false;
+                    this.activeSessionRole = '';
+                    sessionStorage.clear();
+                    this.switchMode('login');
+                },
+
+                switchMode(mode) { this.authMode = mode; this.authMessage = ''; },
+                resetForm() { this.form = { student_id: '', name: '', email: '', program_section: '', status: 'Lockings' }; },
+                setMessage(text, errorStatus) { this.authMessage = text; this.isError = errorStatus; }
             }
         }
     </script>
