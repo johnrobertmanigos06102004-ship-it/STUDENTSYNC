@@ -33,7 +33,7 @@
 
     <div x-show="isLoading" class="fixed inset-0 bg-slate-950/80 z-50 flex flex-col items-center justify-center text-white" x-cloak>
         <div class="w-12 h-12 border-4 border-t-orange-500 border-slate-700 rounded-full animate-spin mb-4"></div>
-        <p class="text-xs font-mono tracking-widest uppercase text-slate-400">Syncing with Cloud Matrix...</p>
+        <p class="text-xs font-mono tracking-widest uppercase text-slate-400">Processing Database Request...</p>
     </div>
 
     <div x-show="!isLoggedIn" class="min-h-screen flex items-center justify-center px-4 py-12" x-cloak>
@@ -266,18 +266,8 @@
                                     </div>
                                 </div>
                                 <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs text-center">
-                                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Assigned Profile Timeline Timeline</div>
+                                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Assigned Profile Timeline</div>
                                     <div class="text-sm font-mono font-bold text-slate-700 mt-3" x-text="studentUserMeta.schedule_info || 'No static timelines uploaded yet.'"></div>
-                                </div>
-                            </div>
-                            
-                            <div x-show="studentUserMeta.status !== 'Complete'" class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl">
-                                <div class="flex">
-                                    <div class="flex-shrink-0">⚠️</div>
-                                    <div class="ml-3">
-                                        <p class="text-sm font-bold text-amber-800">Administrative Hold Notice</p>
-                                        <p class="text-xs text-amber-700 mt-1">Our administrative system tracks locking items in your cloud file stack. Please open your document window via the sidebar menu to view required numbers and upload files immediately.</p>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -286,15 +276,28 @@
 
                 <div x-show="currentView === 'programs'" class="space-y-6" x-cloak style="display: none;">
                     <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
-                        <h3 class="text-lg font-bold text-slate-900 mb-2">Program & Section Sorting Index</h3>
-                        <p class="text-xs text-gray-500 mb-4">Track which specific institutional brackets and blocks your synced roster population belongs to.</p>
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-4 mb-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900">Program & Section Configuration Index</h3>
+                                <p class="text-xs text-gray-500">Add or remove academic groups dynamically below.</p>
+                            </div>
+                            <div class="flex items-center gap-2 w-full sm:w-auto">
+                                <input type="text" x-model="newSectionInput" placeholder="e.g., BSIT-4B-G2" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-orange-500 bg-white">
+                                <button type="button" @click="addNewSectionSlot()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs px-4 py-2 rounded-lg whitespace-nowrap cursor-pointer">➕ Create Section</button>
+                            </div>
+                        </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <template x-for="sectionName in getUniqueSections()" :key="sectionName">
-                                <div class="border border-gray-200 rounded-xl p-4 bg-slate-50/50">
+                                <div class="border border-gray-200 rounded-xl p-4 bg-slate-50/50 relative">
                                     <div class="flex justify-between items-center border-b border-gray-200 pb-2 mb-3">
-                                        <span class="font-bold text-slate-900 text-sm" x-text="sectionName || 'Unassigned Block'"></span>
-                                        <span class="text-xs font-bold bg-orange-100 text-orange-800 px-2.5 py-0.5 rounded-full" x-text="students.filter(s => s.program_section === sectionName).length + ' Members'"></span>
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-bold text-slate-900 text-sm" x-text="sectionName"></span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs font-bold bg-orange-100 text-orange-800 px-2.5 py-0.5 rounded-full" x-text="students.filter(s => s.program_section === sectionName).length + ' Members'"></span>
+                                            <button @click="removeSectionSlot(sectionName)" class="text-xs text-red-500 hover:text-red-700 font-bold bg-white border border-gray-200 px-1.5 py-0.5 rounded shadow-2xs cursor-pointer" title="Remove section slot">🗑️</button>
+                                        </div>
                                     </div>
                                     <ul class="space-y-2 max-h-48 overflow-y-auto pr-1">
                                         <template x-for="st in students.filter(s => s.program_section === sectionName)" :key="st.id">
@@ -302,6 +305,9 @@
                                                 <span class="font-medium text-gray-800" x-text="st.name"></span>
                                                 <span :class="st.status === 'Complete' ? 'text-emerald-600' : 'text-rose-600 font-bold'" x-text="st.status === 'Complete' ? 'Clear' : 'Lockings'"></span>
                                             </li>
+                                        </template>
+                                        <template x-if="students.filter(s => s.program_section === sectionName).length === 0">
+                                            <li class="text-xs text-gray-400 italic py-2 text-center">Empty custom configured section slot.</li>
                                         </template>
                                     </ul>
                                 </div>
@@ -335,7 +341,7 @@
                                         <td class="px-4 py-4 text-slate-900 font-bold text-sm" x-text="studentUserMeta.document_name || 'Generic Student Portfolio Matrix'"></td>
                                         <td class="px-4 py-4 font-mono font-bold text-orange-600" x-text="studentUserMeta.document_number || 'N-2026-X'"></td>
                                         <td class="px-4 py-4">
-                                            <span :class="studentUserMeta.status === 'Complete' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700 font-bold animate-pulse'" class="px-2.5 py-1 rounded-full border border-gray-200 text-[10px]" x-text="studentUserMeta.status === 'Complete' ? '✅ Cleared / Upload Validated' : '❌ Outstanding Locking Item'"></span>
+                                            <span :class="studentUserMeta.status === 'Complete' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700 font-bold'" class="px-2.5 py-1 rounded-full border border-gray-200 text-[10px]" x-text="studentUserMeta.status === 'Complete' ? '✅ Cleared / Upload Validated' : '❌ Outstanding Locking Item'"></span>
                                         </td>
                                         <td class="px-4 py-4 text-right space-x-2 whitespace-nowrap">
                                             <button @click="alert('Initiating download protocol for template document code reference: ' + studentUserMeta.document_number)" class="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-md font-bold transition cursor-pointer">⬇️ Download Template</button>
@@ -369,7 +375,12 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Program / Section Assignment</label>
-                                <input type="text" x-model="form.program_section" placeholder="e.g., BSIT-4A-G1" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500">
+                                <select x-model="form.program_section" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-orange-500">
+                                    <option value="">-- Choose Section --</option>
+                                    <template x-for="sect in getUniqueSections()" :key="sect">
+                                        <option :value="sect" x-text="sect"></option>
+                                    </template>
+                                </select>
                             </div>
                         </div>
 
@@ -434,6 +445,9 @@
                 studentUserMeta: JSON.parse(sessionStorage.getItem('studentUserMeta')) || {}, 
                 students: [],
                 searchQuery: '',
+                newSectionInput: '',
+                // Fallback custom sections list to allow users to populate empty tracking classes
+                customSections: JSON.parse(localStorage.getItem('custom_sections')) || ['BSIT-4A-G1', 'BSIT-4B-G2'],
                 form: { student_id: '', name: '', email: '', program_section: '', document_name: '', document_number: '', schedule_info: '', status: 'Lockings' },
                 editingStudentId: null,
 
@@ -534,14 +548,19 @@
 
                 async fetchCloudRecords() {
                     this.isLoading = true;
-                    const { data, error } = await supabaseClient
-                        .from('students')
-                        .select('*')
-                        .order('created_at', { ascending: false });
+                    try {
+                        const { data, error } = await supabaseClient
+                            .from('students')
+                            .select('*')
+                            .order('created_at', { ascending: false });
 
-                    this.isLoading = false;
-                    if (!error && data) {
-                        this.students = data;
+                        if (!error && data) {
+                            this.students = data;
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    } finally {
+                        this.isLoading = false;
                     }
                 },
 
@@ -574,6 +593,7 @@
 
                 async commitStudentForm() {
                     this.isLoading = true;
+                    
                     const studentPayload = {
                         student_id: this.form.student_id,
                         name: this.form.name,
@@ -585,20 +605,29 @@
                         status: this.form.status
                     };
 
+                    let error = null;
+
                     if (this.editingStudentId) {
-                        await supabaseClient
+                        const res = await supabaseClient
                             .from('students')
                             .update(studentPayload)
                             .eq('id', this.editingStudentId);
+                        error = res.error;
                     } else {
-                        await supabaseClient
+                        const res = await supabaseClient
                             .from('students')
                             .insert([studentPayload]);
+                        error = res.error;
                     }
 
-                    await this.fetchCloudRecords();
-                    this.editingStudentId = null;
-                    this.currentView = 'dashboard';
+                    if (error) {
+                        this.isLoading = false;
+                        alert("🚨 SUPABASE ERROR: Could not commit student profile.\n\nReason: " + error.message + "\n\nTip: Double-check if your database columns exactly match these structural fields or if they are still named 'gpa' / 'attendance'.");
+                    } else {
+                        await this.fetchCloudRecords();
+                        this.editingStudentId = null;
+                        this.currentView = 'dashboard';
+                    }
                 },
 
                 async deleteStudent(id) {
@@ -609,9 +638,32 @@
                     }
                 },
 
+                addNewSectionSlot() {
+                    const cleaned = this.newSectionInput.trim();
+                    if (!cleaned) return alert("Please type a section designation identifier.");
+                    if (this.customSections.includes(cleaned)) return alert("This Section profile already exists.");
+                    
+                    this.customSections.push(cleaned);
+                    localStorage.setItem('custom_sections', JSON.stringify(this.customSections));
+                    this.newSectionInput = '';
+                },
+
+                removeSectionSlot(sectionName) {
+                    const count = this.students.filter(s => s.program_section === sectionName).length;
+                    if (count > 0) {
+                        return alert("Cannot delete section: " + sectionName + " because there are currently " + count + " active student profiles mapped to it. Re-assign those students first.");
+                    }
+                    if (confirm("Delete the empty program section entry slot: " + sectionName + "?")) {
+                        this.customSections = this.customSections.filter(s => s !== sectionName);
+                        localStorage.setItem('custom_sections', JSON.stringify(this.customSections));
+                    }
+                },
+
                 getUniqueSections() {
-                    const sections = this.students.map(s => s.program_section).filter(Boolean);
-                    return [...new Set(sections)];
+                    // Merges active database rows with locally managed section configuration tags
+                    const activeDbSections = this.students.map(s => s.program_section).filter(Boolean);
+                    const combined = [...this.customSections, ...activeDbSections];
+                    return [...new Set(combined)];
                 },
 
                 triggerDocumentSimulatedUpload() {
@@ -624,8 +676,7 @@
                         const query = this.searchQuery.toLowerCase();
                         return s.name.toLowerCase().includes(query) || 
                                s.student_id.toLowerCase().includes(query) ||
-                               (s.program_section && s.program_section.toLowerCase().includes(query)) ||
-                               (s.document_name && s.document_name.toLowerCase().includes(query));
+                               (s.program_section && s.program_section.toLowerCase().includes(query));
                     });
                 }
             }
