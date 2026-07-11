@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudentSync - Consolidated Cloud Information Management System</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        
+        .ctu-seal-img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            border-radius: 9999px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            background-color: #ffffff;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 font-sans text-gray-800 antialiased min-h-screen" x-data="trackerApp()">
+
+    <div x-show="isLoading" class="fixed inset-0 bg-slate-950/80 z-50 flex flex-col items-center justify-center text-white" x-cloak>
+        <div class="w-12 h-12 border-4 border-t-orange-500 border-slate-700 rounded-full animate-spin mb-4"></div>
+        <p class="text-xs font-mono tracking-widest uppercase text-slate-400">Syncing with Cloud Matrix...</p>
+    </div>
+
+    <div x-show="!isLoggedIn" class="min-h-screen flex items-center justify-center px-4 py-12" x-cloak>
+        <div class="max-w-md w-full space-y-6 bg-white p-8 rounded-2xl shadow-2xl relative z-10 border border-gray-100">
+            <div class="text-center">
+                <div class="flex items-center justify-center gap-2.5">
+                    <img class="ctu-seal-img" src="ctu.png" alt="CTU Seal">
+                    <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">StudentSync</h1>
+                </div>
+                <div class="flex items-center justify-center gap-1 text-orange-600 font-black text-xl mt-1 tracking-widest animate-pulse">
+                    ≫≫
+                </div>
+                <p class="mt-2 text-center text-sm text-gray-600" x-text="authMode === 'login' ? 'Access your cloud database gateway' : 'Register a cloud administrator account'"></p>
+            </div>
+
+            <div x-show="authMode === 'login'" class="bg-slate-100 p-1 rounded-xl grid grid-cols-2 text-center text-xs font-bold transition shadow-inner">
+                <button type="button" @click="selectedRole = 'admin'; authMessage = ''" :class="selectedRole === 'admin' ? 'bg-white text-orange-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'" class="py-2 rounded-lg transition cursor-pointer">
+                    🛠️ Administrator
+                </button>
+                <button type="button" @click="selectedRole = 'student'; authMessage = ''" :class="selectedRole === 'student' ? 'bg-white text-orange-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'" class="py-2 rounded-lg transition cursor-pointer">
+                    🎓 Student Gateway
+                </button>
+            </div>
+            
+            <div x-show="authMessage" x-text="authMessage" 
+                 :class="isError ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-emerald-50 border border-emerald-200 text-emerald-700'"
+                 class="px-4 py-3 rounded-lg text-sm transition-all">
+            </div>
+
+            <form x-show="authMode === 'login'" class="space-y-4" @submit.prevent="handleLogin()">
+                <template x-if="selectedRole === 'admin'">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Admin Email Address</label>
+                            <input type="email" x-model="loginForm.email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden" placeholder="admin@example.com">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Password</label>
+                            <input type="password" x-model="loginForm.password" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden" placeholder="••••••••">
+                        </div>
+                    </div>
+                </template>
+
+                <template x-if="selectedRole === 'student'">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Assigned Student ID Number</label>
+                            <input type="text" x-model="studentLoginForm.studentId" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden" placeholder="e.g., STU-2026-001">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Last Name</label>
+                            <input type="text" x-model="studentLoginForm.lastName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden" placeholder="e.g., Rostova">
+                        </div>
+                    </div>
+                </template>
+
+                <button type="submit" :class="selectedRole === 'student' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-slate-900 hover:bg-slate-800'" class="w-full py-2.5 px-4 text-sm font-semibold rounded-lg text-white transition shadow-md cursor-pointer">
+                    Sign In to Cloud Space
+                </button>
+                
+                <p x-show="selectedRole === 'admin'" class="text-center text-sm text-gray-600 mt-2">
+                    Need a shared admin cloud node? <button type="button" @click="switchMode('signup')" class="font-medium text-orange-600 hover:text-orange-500 cursor-pointer">Sign Up</button>
+                </p>
+            </form>
+
+            <form x-show="authMode === 'signup'" class="space-y-4" @submit.prevent="handleSignUp()" style="display: none;">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Admin Email Address</label>
+                    <input type="email" x-model="signUpForm.email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden" placeholder="admin@example.com">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Create Secure Password</label>
+                    <input type="password" x-model="signUpForm.password" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden" placeholder="Minimum 6 characters">
+                </div>
+                <button type="submit" class="w-full py-2.5 px-4 text-sm font-semibold rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 transition shadow-md cursor-pointer">
+                    Initialize Cloud Admin Account
+                </button>
+                <p class="text-center text-sm text-gray-600 mt-2">
+                    Already registered? <button type="button" @click="switchMode('login')" class="font-medium text-orange-600 hover:text-orange-500 cursor-pointer">Sign In</button>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <div x-show="isLoggedIn" class="flex min-h-screen relative bg-slate-50" style="display: none;" x-cloak>
+        
+        <div x-show="isSidebarOpen" @click="isSidebarOpen = false" class="fixed inset-0 bg-slate-950/50 z-40 transition-opacity" x-cloak></div>
+
+        <aside class="fixed inset-y-0 left-0 w-76 bg-slate-900 text-white p-6 z-50 transform transition-transform duration-300 flex flex-col justify-between shadow-2xl"
+               :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full'">
+            <div>
+                <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
+                    <div>
+                        <div class="flex items-center gap-2.5">
+                            <img class="ctu-seal-img" src="ctu.png" alt="CTU Seal">
+                            <h1 class="text-xl font-bold text-orange-400 tracking-wider">StudentSync</h1>
+                        </div>
+                        <span class="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 bg-slate-800 rounded-sm text-slate-400 block w-max mt-2" x-text="activeSessionRole + ' cloud instance'"></span>
+                    </div>
+                    <button @click="isSidebarOpen = false" class="text-slate-400 hover:text-white p-1 text-sm font-semibold border border-slate-700 hover:border-slate-500 rounded-lg transition cursor-pointer">&larr; Close</button>
+                </div>
+                
+                <nav class="space-y-2">
+                    <template x-if="activeSessionRole === 'admin'">
+                        <div class="space-y-2">
+                            <button @click="currentView = 'dashboard'; isSidebarOpen = false; editingStudentId = null" :class="currentView === 'dashboard' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition text-left cursor-pointer">
+                                <span>📊</span> Live Storage Roster
+                            </button>
+                            <button @click="openInsertForm()" :class="currentView === 'studentForm' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition text-left cursor-pointer">
+                                <span>📝</span> Add New Student Profile
+                            </button>
+                        </div>
+                    </template>
+
+                    <template x-if="activeSessionRole === 'student'">
+                        <div class="space-y-2">
+                            <button @click="currentView = 'dashboard'; isSidebarOpen = false" :class="currentView === 'dashboard' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition text-left cursor-pointer">
+                                <span>📊</span> My Performance Profile
+                            </button>
+                            <button @click="currentView = 'schedule'; isSidebarOpen = false" :class="currentView === 'schedule' ? 'bg-orange-600 text-white' : 'text-slate-300 hover:bg-slate-800'" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition text-left cursor-pointer">
+                                <span>📅</span> My Class Schedule
+                            </button>
+                        </div>
+                    </template>
+                </nav>
+            </div>
+
+            <div class="border-t border-slate-800 pt-4">
+                <button @click="handleLogout()" class="w-full flex items-center gap-3 px-4 py-2 text-xs rounded-xl text-red-400 hover:bg-slate-800 hover:text-red-300 transition cursor-pointer">
+                    <span>🚪</span> Disconnect Session
+                </button>
+            </div>
+        </aside>
+
+        <div class="flex-1 flex flex-col min-w-0">
+            <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-4 justify-between shrink-0 shadow-xs">
+                <div class="flex items-center gap-3">
+                    <button @click="isSidebarOpen = !isSidebarOpen" class="bg-slate-950 text-white hover:bg-slate-800 px-4 py-2 rounded-xl text-sm font-semibold transition shadow-sm flex items-center gap-2 cursor-pointer">
+                        <span>☰</span> Menu Options
+                    </button>
+                    <div class="hidden sm:flex items-center gap-2.5">
+                        <img class="ctu-seal-img" src="ctu.png" alt="CTU Seal">
+                        <h2 class="text-lg font-bold text-slate-900 tracking-tight">Academic Cloud Workspace</h2>
+                    </div>
+                </div>
+                <div class="text-xs bg-emerald-50 border border-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full font-bold uppercase tracking-wider">☁️ Cloud Persistent Connected</div>
+            </header>
+
+            <main class="flex-1 p-6 bg-slate-50/50">
+                
+                <div x-show="currentView === 'dashboard'" class="space-y-6" x-cloak>
+                    <template x-if="activeSessionRole === 'admin'">
+                        <div class="space-y-6">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
+                                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Cloud Records Found</div>
+                                    <div class="text-3xl font-black text-gray-900 mt-1" x-text="students.length">0</div>
+                                </div>
+                                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
+                                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Global Average GPA</div>
+                                    <div class="text-3xl font-black text-orange-600 mt-1" x-text="calculateAvgGpa()">0.00</div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-4 rounded-xl border border-gray-200 flex flex-col sm:flex-row justify-between gap-4 items-center shadow-xs">
+                                <div class="relative w-full sm:w-80">
+                                    <input type="text" x-model="searchQuery" placeholder="Search live registry fields..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:outline-hidden">
+                                </div>
+                            </div>
+
+                            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left border-collapse">
+                                        <thead class="bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                            <tr>
+                                                <th class="px-6 py-4">Assigned ID Number</th>
+                                                <th class="px-6 py-4">Full Student Name</th>
+                                                <th class="px-6 py-4">Contact Email</th>
+                                                <th class="px-6 py-4 text-center">GPA</th>
+                                                <th class="px-6 py-4 text-center">Attendance %</th>
+                                                <th class="px-6 py-4">Status</th>
+                                                <th class="px-6 py-4 text-right">Cloud Config</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-200 text-sm">
+                                            <template x-for="student in filteredStudents()" :key="student.id">
+                                                <tr class="hover:bg-slate-50/70 transition">
+                                                    <td class="px-6 py-4 font-mono font-bold text-orange-600 text-xs" x-text="student.student_id"></td>
+                                                    <td class="px-6 py-4 font-bold text-gray-900" x-text="student.name"></td>
+                                                    <td class="px-6 py-4 text-gray-500 font-mono text-xs" x-text="student.email"></td>
+                                                    <td class="px-6 py-4 text-center font-bold text-gray-700" x-text="Number(student.gpa).toFixed(2)"></td>
+                                                    <td class="px-6 py-4 text-center text-gray-600 font-medium" x-text="student.attendance + '%'"></td>
+                                                    <td class="px-6 py-4">
+                                                        <span :class="student.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'" class="px-2.5 py-1 text-xs font-bold rounded-full border border-gray-200" x-text="student.status"></span>
+                                                    </td>
+                                                    <td class="px-6 py-4 text-right space-x-3">
+                                                        <button @click="startEditStudent(student)" class="text-orange-600 hover:text-orange-900 font-bold text-xs underline cursor-pointer">Modify</button>
+                                                        <button @click="deleteStudent(student.id)" class="text-red-500 hover:text-red-700 font-bold text-xs underline cursor-pointer">Delete</button>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                            <tr x-show="filteredStudents().length === 0">
+                                                <td colspan="7" class="text-center py-8 text-gray-400 text-xs">No matching storage matrix items synced.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template x-if="activeSessionRole === 'student'">
+                        <div class="space-y-6 max-w-4xl mx-auto">
+                            <div class="bg-slate-900 rounded-2xl p-6 text-white shadow-md border border-orange-500/20">
+                                <h3 class="text-xl font-bold">Welcome back, <span x-text="studentUserMeta.name"></span>!</h3>
+                                <p class="text-xs text-orange-200 mt-1" x-text="'Verified Cloud Identity: ' + studentUserMeta.student_id"></p>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs text-center">
+                                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Your Cumulative GPA</div>
+                                    <div class="text-4xl font-black text-orange-600 mt-2" x-text="Number(studentUserMeta.gpa).toFixed(2)">0.00</div>
+                                </div>
+                                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs text-center">
+                                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Attendance Percentage</div>
+                                    <div class="text-4xl font-black text-slate-800 mt-2" x-text="studentUserMeta.attendance + '%'">0%</div>
+                                </div>
+                                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs text-center">
+                                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Enrollment Standing Status</div>
+                                    <div class="mt-3">
+                                        <span class="px-3 py-1.5 rounded-full font-bold text-xs bg-emerald-50 text-emerald-700" x-text="studentUserMeta.status"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <div x-show="currentView === 'schedule'" class="max-w-4xl mx-auto space-y-6" x-cloak style="display: none;">
+                    <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">Static Registered Class Timelines</h3>
+                        <div class="overflow-hidden border border-gray-200 rounded-xl text-xs">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gray-50 text-gray-500 font-bold uppercase">
+                                    <tr>
+                                        <th class="px-4 py-3">Day</th>
+                                        <th class="px-4 py-3">Subject Module</th>
+                                        <th class="px-4 py-3">Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 text-gray-700 font-medium">
+                                    <tr>
+                                        <td class="px-4 py-3.5 text-orange-600 font-bold">Mon/Wed</td>
+                                        <td class="px-4 py-3.5 text-slate-900 font-semibold">Embedded Systems Design Lab</td>
+                                        <td class="px-4 py-3.5">09:00 AM - 11:30 AM</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-4 py-3.5 text-orange-600 font-bold">Tue/Thu</td>
+                                        <td class="px-4 py-3.5 text-slate-900 font-semibold">IoT Systems Automation Automation</td>
+                                        <td class="px-4 py-3.5">10:00 AM - 12:00 PM</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div x-show="currentView === 'studentForm'" class="max-w-xl mx-auto bg-white rounded-2xl border border-gray-200 shadow-md p-6 space-y-4" x-cloak style="display: none;">
+                    <h3 class="text-lg font-bold text-gray-900 border-b border-gray-100 pb-2" x-text="editingStudentId ? 'Modify Synced Cloud Record' : 'Append New Cloud Student Entry'"></h3>
+                    
+                    <form @submit.prevent="commitStudentForm()" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Assign ID Number</label>
+                                <input type="text" x-model="form.student_id" :disabled="editingStudentId" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Full Student Name</label>
+                                <input type="text" x-model="form.name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Contact Email</label>
+                            <input type="email" x-model="form.email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">GPA (0.00-4.00)</label>
+                                <input type="number" x-model="form.gpa" step="0.01" min="0" max="4" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Attendance (%)</label>
+                                <input type="number" x-model="form.attendance" min="0" max="100" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Standing Status</label>
+                            <select x-model="form.status" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+                                <option value="Active">Active</option>
+                                <option value="At-Risk">At-Risk</option>
+                                <option value="On Leave">On Leave</option>
+                            </select>
+                        </div>
+                        <div class="pt-2 flex gap-3">
+                            <button type="submit" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2.5 rounded-lg text-sm shadow cursor-pointer">Commit Changes to Cloud</button>
+                            <button type="button" @click="currentView = 'dashboard'; editingStudentId = null" class="px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-500 hover:bg-gray-100">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Connected to your live Supabase reference ID setup
+        const SUPABASE_URL = "https://omgtnmdhzsviuqnbtraj.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_r7PIcJNOFyBHGrq5kyOxMg_xyzhd5Eg";
+        
+        // Fixed client declaration initialization name space rule
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function trackerApp() {
+            return {
+                isSidebarOpen: false,
+                currentView: 'dashboard', 
+                isLoading: false,
+
+                selectedRole: 'admin', 
+                activeSessionRole: sessionStorage.getItem('activeSessionRole') || '',
+                isLoggedIn: sessionStorage.getItem('isLoggedIn') === 'true',
+                authMode: 'login', 
+                
+                loginForm: { email: '', password: '' },
+                signUpForm: { email: '', password: '' },
+                studentLoginForm: { studentId: '', lastName: '' },
+                authMessage: '', isError: false,
+
+                studentUserMeta: JSON.parse(sessionStorage.getItem('studentUserMeta')) || {}, 
+                students: [],
+                searchQuery: '',
+                form: { student_id: '', name: '', email: '', gpa: '', attendance: '', status: 'Active' },
+                editingStudentId: null,
+
+                async init() {
+                    // Check if a valid Supabase authentication token exists in session
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    if (session && this.activeSessionRole === 'admin') {
+                        this.isLoggedIn = true;
+                        await this.fetchCloudRecords();
+                    } else if (this.isLoggedIn && this.activeSessionRole === 'student') {
+                        await this.fetchCloudRecords();
+                    }
+                },
+
+                switchMode(mode) {
+                    this.authMode = mode;
+                    this.authMessage = '';
+                    this.loginForm = { email: '', password: '' };
+                    this.signUpForm = { email: '', password: '' };
+                },
+
+                async handleSignUp() {
+                    this.isLoading = true;
+                    const { data, error } = await supabaseClient.auth.signUp({
+                        email: this.signUpForm.email,
+                        password: this.signUpForm.password,
+                    });
+
+                    this.isLoading = false;
+                    if (error) {
+                        this.setMessage(error.message, true);
+                    } else {
+                        this.setMessage('Admin registered! Check email for verification link if enabled, or sign in.', false);
+                        this.switchMode('login');
+                    }
+                },
+
+                async handleLogin() {
+                    this.isLoading = true;
+                    this.authMessage = '';
+
+                    if (this.selectedRole === 'student') {
+                        const enteredId = this.studentLoginForm.studentId.trim();
+                        const enteredLastName = this.studentLoginForm.lastName.trim().toLowerCase();
+
+                        const { data, error } = await supabaseClient
+                            .from('students')
+                            .select('*')
+                            .eq('student_id', enteredId);
+
+                        this.isLoading = false;
+                        if (error) {
+                            this.setMessage('Database connection error checking student index.', true);
+                            return;
+                        }
+
+                        if (data && data.length > 0) {
+                            const record = data[0];
+                            const nameParts = record.name.trim().split(' ');
+                            const recordLastName = nameParts[nameParts.length - 1].toLowerCase();
+
+                            if (recordLastName === enteredLastName) {
+                                this.isLoggedIn = true;
+                                this.activeSessionRole = 'student';
+                                this.studentUserMeta = record;
+
+                                sessionStorage.setItem('isLoggedIn', 'true');
+                                sessionStorage.setItem('activeSessionRole', 'student');
+                                sessionStorage.setItem('studentUserMeta', JSON.stringify(record));
+                                
+                                this.currentView = 'dashboard';
+                            } else {
+                                this.setMessage('Last Name matching verification rejected.', true);
+                            }
+                        } else {
+                            this.setMessage('No student record found with that cloud matching ID key.', true);
+                        }
+                        return;
+                    }
+
+                    // Admin Login via Supabase Auth System
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({
+                        email: this.loginForm.email,
+                        password: this.loginForm.password
+                    });
+
+                    if (error) {
+                        this.isLoading = false;
+                        this.setMessage(error.message, true);
+                    } else {
+                        this.activeSessionRole = 'admin';
+                        this.isLoggedIn = true;
+                        sessionStorage.setItem('isLoggedIn', 'true');
+                        sessionStorage.setItem('activeSessionRole', 'admin');
+                        await this.fetchCloudRecords();
+                        this.isLoading = false;
+                        this.currentView = 'dashboard';
+                    }
+                },
+
+                async fetchCloudRecords() {
+                    this.isLoading = true;
+                    const { data, error } = await supabaseClient
+                        .from('students')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+
+                    this.isLoading = false;
+                    if (!error && data) {
+                        this.students = data;
+                    }
+                },
+
+                async handleLogout() {
+                    await supabaseClient.auth.signOut();
+                    this.isLoggedIn = false;
+                    this.activeSessionRole = '';
+                    this.studentUserMeta = {};
+                    sessionStorage.clear();
+                    this.switchMode('login');
+                },
+
+                setMessage(text, errorStatus) {
+                    this.authMessage = text;
+                    this.isError = errorStatus;
+                },
+
+                openInsertForm() {
+                    this.editingStudentId = null;
+                    this.form = { student_id: '', name: '', email: '', gpa: '', attendance: '', status: 'Active' };
+                    this.currentView = 'studentForm';
+                    this.isSidebarOpen = false;
+                },
+
+                startEditStudent(student) {
+                    this.editingStudentId = student.id;
+                    this.form = { ...student };
+                    this.currentView = 'studentForm';
+                },
+
+                async commitStudentForm() {
+                    this.isLoading = true;
+                    const studentPayload = {
+                        student_id: this.form.student_id,
+                        name: this.form.name,
+                        email: this.form.email,
+                        gpa: parseFloat(this.form.gpa),
+                        attendance: parseInt(this.form.attendance),
+                        status: this.form.status
+                    };
+
+                    if (this.editingStudentId) {
+                        const { error } = await supabaseClient
+                            .from('students')
+                            .update(studentPayload)
+                            .eq('id', this.editingStudentId);
+                    } else {
+                        const { error } = await supabaseClient
+                            .from('students')
+                            .insert([studentPayload]);
+                    }
+
+                    await this.fetchCloudRecords();
+                    this.form = { student_id: '', name: '', email: '', gpa: '', attendance: '', status: 'Active' };
+                    this.editingStudentId = null;
+                    this.currentView = 'dashboard';
+                },
+
+                async deleteStudent(id) {
+                    if (confirm("Permanently erase this data record row from the remote cloud?")) {
+                        this.isLoading = true;
+                        await supabaseClient.from('students').delete().eq('id', id);
+                        await this.fetchCloudRecords();
+                    }
+                },
+
+                filteredStudents() {
+                    return this.students.filter(s => {
+                        if (!s || !s.name) return false;
+                        return s.name.toLowerCase().includes(this.searchQuery.toLowerCase()) || 
+                               s.student_id.toLowerCase().includes(this.searchQuery.toLowerCase());
+                    });
+                },
+
+                calculateAvgGpa() {
+                    if (this.students.length === 0) return "0.00";
+                    return (this.students.reduce((sum, s) => sum + Number(s.gpa || 0), 0) / this.students.length).toFixed(2);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
